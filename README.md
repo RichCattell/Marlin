@@ -8,19 +8,21 @@ includes the following updates:
 
 
 -  Add/Update M666 Command to support the following parameters:
-   L       List all current parameters
-   X/Y/Z   Endstop offset adjustment (unchanged from previous implementation).
-   A/B/C   Delta tower position adjustment. These values equate to xa/ya/xc parameters from Peter
-           Hercek's Maxima calibration worksheet (deltabot google group).
-   R	     Delta radius (in mm).
-   D	     Diagonal rod length (in mm).
-   H       Build height (in mm).   
 
-           All of these parameters can now be saved/loaded to EEPROM using M500 / M501 commands.
-           M502 will load default values for these parameters from configuration.h
+		L		- List all current parameters.
+		X/Y/Z	- Endstop offset adjustment (unchanged from previous implementation).
+		A/B/C	- Delta tower position adjustment. These values equate to xa/ya/xc parameters from Peter
+	    	 	  Hercek's Maxima calibration worksheet (deltabot google group).
+		R	- Delta radius (in mm).
+		D	- Diagonal rod length (in mm).
+		H	- Build height (in mm).   
+   
+		All of these parameters can now be saved/loaded to EEPROM using M500 / M501 commands.
+		M502 will load default values for these parameters from configuration.h
 
 -  Add G30 Bed Report / Autocalibration command, supports the following syntax:
-   G30	   Home all carrages the probe bed at 7 points and produce calibration report:
+
+		G30	- Home all carrages the probe bed at 7 points and produce calibration report:
 
                       Z-Tower                      Endstop Offsets
                       -2.0125                      X: 0.00 Y: 0.00 Z: 0.00
@@ -31,10 +33,10 @@ includes the following updates:
            X-Tower                Y-Tower          Build Height: 280.00 
                                                    
 
-	         This can be used to perform manual calibration by changing parameters with M666 command and
-           then re-doing G30 to see the result.
+		This can be used to perform manual calibration by changing parameters with M666 command and
+	        then re-doing G30 to see the result.
 
-   G30 A   Perform delta autocalibration - will produce a G30 report for each stage of the calibration.
+   		G30 A	- Perform delta autocalibration - will produce a G30 report for each stage of the calibration.
 
            
 -  Add Z-Probe deploy / retract location variables to configuration.h:
