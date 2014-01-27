@@ -996,10 +996,10 @@ void calibrate_print_surface(float z_offset) {
     SERIAL_ECHOLN("");
   }
 }
-float probe_bed(int bedpos, int lift) {
+float probe_bed(int bedpos) {
 	//Probe bed at specified predifined location and return bed offset
         float probe_value;
-        z_offset = z_probe_offset[Z_AXIS] + (code_seen(axis_codes[Z_AXIS]) ? code_value() : 0.0);
+      
 	if (bedpos == 0) {
 		//centre
 	      destination[X_AXIS] = -z_probe_offset[X_AXIS];
@@ -1008,36 +1008,37 @@ float probe_bed(int bedpos, int lift) {
 	if (bedpos == 1) {
 		//z tower (back)
 	      destination[X_AXIS] = 0.0 - z_probe_offset[X_AXIS];
-      	destination[Y_AXIS] = bed_radius - z_probe_offset[Y_AXIS];
+      	      destination[Y_AXIS] = bed_radius - z_probe_offset[Y_AXIS];
 	}
 	if (bedpos == 2) {
 		//opposite y tower (back left)
 	      destination[X_AXIS] = (-SIN_60*bed_radius)- z_probe_offset[X_AXIS];
-       	destination[Y_AXIS] = (COS_60*bed_radius)- z_probe_offset[Y_AXIS];
+       	      destination[Y_AXIS] = (COS_60*bed_radius)- z_probe_offset[Y_AXIS];
 	}
 	if (bedpos == 3) {
 		//x tower (front left)
 	      destination[X_AXIS] = (-SIN_60*bed_radius)- z_probe_offset[X_AXIS];
-      	destination[Y_AXIS] = (-COS_60*bed_radius)- z_probe_offset[Y_AXIS];
+      	      destination[Y_AXIS] = (-COS_60*bed_radius)- z_probe_offset[Y_AXIS];
 	}
 	if (bedpos == 4) {
 		//opposite z tower (front)
 	      destination[X_AXIS] = 0.0 - z_probe_offset[X_AXIS];
-      	destination[Y_AXIS] =  -bed_radius - z_probe_offset[Y_AXIS];
+      	      destination[Y_AXIS] =  -bed_radius - z_probe_offset[Y_AXIS];
 	}
 	if (bedpos == 5) {
-		//y tower (front right)
-		destination[X_AXIS] = (SIN_60*bed_radius) - z_probe_offset[X_AXIS];
+	      //y tower (front right)
+	      destination[X_AXIS] = (SIN_60*bed_radius) - z_probe_offset[X_AXIS];
 	      destination[Y_AXIS] = (-COS_60*bed_radius) - z_probe_offset[Y_AXIS];
 	}
 	if (bedpos == 6) {
-		//opposite x tower (back right)
-		destination[X_AXIS] = (SIN_60*bed_radius)- z_probe_offset[X_AXIS];
-      	destination[Y_AXIS] = (COS_60*bed_radius)- z_probe_offset[Y_AXIS];
+	      //opposite x tower (back right)
+	      destination[X_AXIS] = (SIN_60*bed_radius)- z_probe_offset[X_AXIS];
+      	      destination[Y_AXIS] = (COS_60*bed_radius)- z_probe_offset[Y_AXIS];
 	}
 
-      probe_value = z_probe() + z_offset;
-      destination[Z_AXIS] = destination[Z_AXIS] + lift;
+      destination[Z_AXIS] = 5 - z_probe_offset[Z_AXIS];
+      probe_value = z_probe() + z_probe_offset[Z_AXIS];
+      destination[Z_AXIS] = 8 - z_probe_offset[Z_AXIS];
       prepare_move_raw();
       return probe_value;                 
 }
@@ -1047,17 +1048,17 @@ void calibration_report() {
       destination[X_AXIS] = -z_probe_offset[X_AXIS];
       destination[Y_AXIS] = -z_probe_offset[Y_AXIS];
       feedrate = homing_feedrate[X_AXIS];
-      destination[Z_AXIS] = 20;
+      destination[Z_AXIS] = 5 - z_probe_offset[Z_AXIS];
       prepare_move_raw();
            
       //Probe all bed positions & output report
-      bed_level_c = probe_bed(0,5);      
-      bed_level_z = probe_bed(1,5);
-      bed_level_oy = probe_bed(2,5);
-      bed_level_x = probe_bed(3,5);
-      bed_level_oz = probe_bed(4,5);
-      bed_level_y = probe_bed(5,5);
-      bed_level_ox = probe_bed(6,5);
+      bed_level_c = probe_bed(0);      
+      bed_level_z = probe_bed(1);
+      bed_level_oy = probe_bed(2);
+      bed_level_x = probe_bed(3);
+      bed_level_oz = probe_bed(4);
+      bed_level_y = probe_bed(5);
+      bed_level_ox = probe_bed(6);
       
       //Display Report
       SERIAL_ECHOLN("\tZ-Tower");
@@ -1065,8 +1066,7 @@ void calibration_report() {
       SERIAL_PROTOCOLPGM("\t");
       SERIAL_PROTOCOL_F(bed_level_z, 4);
       SERIAL_ECHOLN("\t\t\tEndstop Offsets");
-      
-      SERIAL_PROTOCOLPGM("");
+
       SERIAL_PROTOCOL_F(bed_level_oy, 4);
       SERIAL_PROTOCOLPGM("\t\t");
       SERIAL_PROTOCOL_F(bed_level_ox, 4);
@@ -1080,7 +1080,6 @@ void calibration_report() {
       SERIAL_ECHOLN("\t\t\tTower Position Adjust");
       SERIAL_ECHOLN("");
       
-      SERIAL_PROTOCOLPGM("");
       SERIAL_PROTOCOL_F(bed_level_x, 4);
       SERIAL_PROTOCOLPGM("\t\t");
       SERIAL_PROTOCOL_F(bed_level_y, 4);
@@ -1413,7 +1412,9 @@ void process_commands()
 	  iterations = 50;
 	  loopcount = 1;
   	  do {
-    
+            SERIAL_ECHO("Iteration: ");
+            SERIAL_ECHO(loopcount);
+            SERIAL_ECHOLN("");
             if ((bed_level_c > 5) or (bed_level_c < -5))
               {
                 //Build height is not set correctly .. 
@@ -1489,11 +1490,11 @@ void process_commands()
                     and (bed_level_oz >= -ac_prec) and (bed_level_oz <= ac_prec)) loopcount = iterations;
 
 		} while(loopcount < iterations);
-           } 
 
- 	SERIAL_ECHOLN("Auto Calibration Complete");
-        SERIAL_ECHOLN("Issue M500 Command to save calibration settings to EPROM (if enabled)");
- 
+           SERIAL_ECHOLN("Auto Calibration Complete");
+           SERIAL_ECHOLN("Issue M500 Command to save calibration settings to EPROM (if enabled)");
+           } 
+           
  	retract_z_probe();
  
         //Restore saved variables
