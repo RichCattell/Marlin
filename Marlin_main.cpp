@@ -1060,37 +1060,42 @@ void calibration_report() {
       bed_level_ox = probe_bed(6,5);
       
       //Display Report
-      SERIAL_ECHOLN("               Z-Tower");
-      SERIAL_ECHOLN("");
-      SERIAL_PROTOCOLPGM("                ");
+      SERIAL_ECHOLN("\tZ-Tower");
+      
+      SERIAL_PROTOCOLPGM("\t");
       SERIAL_PROTOCOL_F(bed_level_z, 4);
-      SERIAL_ECHOLN("                            Endstop Offsets");
-      SERIAL_ECHOLN("");
-      SERIAL_PROTOCOLPGM("       ");
+      SERIAL_ECHOLN("\t\t\tEndstop Offsets");
+      
+      SERIAL_PROTOCOLPGM("");
       SERIAL_PROTOCOL_F(bed_level_oy, 4);
-      SERIAL_PROTOCOLPGM("            ");
+      SERIAL_PROTOCOLPGM("\t\t");
       SERIAL_PROTOCOL_F(bed_level_ox, 4);
-      SERIAL_ECHOPAIR("          X: ",endstop_adj[0]);
-      SERIAL_ECHOPAIR(" Y: ",endstop_adj[1]);
-      SERIAL_ECHOPAIR(" Z: ",endstop_adj[2]);
+      SERIAL_ECHOPAIR("\t\tX:",endstop_adj[0]);
+      SERIAL_ECHOPAIR(" Y:",endstop_adj[1]);
+      SERIAL_ECHOPAIR(" Z:",endstop_adj[2]);
       SERIAL_ECHOLN("");
-      SERIAL_PROTOCOLPGM("                ");
+      
+      SERIAL_PROTOCOLPGM("\t");
       SERIAL_PROTOCOL_F(bed_level_c, 4);
-      SERIAL_ECHOLN("                         Tower Position Adjust: ");
-      SERIAL_PROTOCOLPGM("        ");
-      SERIAL_PROTOCOL_F(bed_level_x, 4);
-      SERIAL_PROTOCOLPGM("            ");
-      SERIAL_PROTOCOL_F(bed_level_y, 4);
-      SERIAL_ECHOPAIR("         A: ",tower_adj[0]);
-      SERIAL_ECHOPAIR(" B: ",tower_adj[1]);
-      SERIAL_ECHOPAIR(" C: ",tower_adj[2]);
+      SERIAL_ECHOLN("\t\t\tTower Position Adjust");
       SERIAL_ECHOLN("");
-      SERIAL_PROTOCOLPGM("                ");
+      
+      SERIAL_PROTOCOLPGM("");
+      SERIAL_PROTOCOL_F(bed_level_x, 4);
+      SERIAL_PROTOCOLPGM("\t\t");
+      SERIAL_PROTOCOL_F(bed_level_y, 4);
+      SERIAL_ECHOPAIR("\t\tA:",tower_adj[0]);
+      SERIAL_ECHOPAIR(" B:",tower_adj[1]);
+      SERIAL_ECHOPAIR(" C:",tower_adj[2]);
+      SERIAL_ECHOLN("");
+
+      SERIAL_PROTOCOLPGM("\t");
       SERIAL_PROTOCOL_F(bed_level_oz, 4);
-      SERIAL_PROTOCOLPGM("                        Delta Radius: ");
+      SERIAL_PROTOCOLPGM("\t\t\tDelta Radius: ");
       SERIAL_PROTOCOL_F(delta_radius, 4);
       SERIAL_ECHOLN("");
-      SERIAL_PROTOCOLPGM("    X-Tower                Y-Tower       Diag Rod: ");
+      
+      SERIAL_PROTOCOLPGM("X-Tower\t\tY-Tower\t\tDiag Rod: ");
       SERIAL_PROTOCOL_F(delta_diagonal_rod, 4);
       SERIAL_ECHOLN("");
 }
