@@ -63,6 +63,7 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i,max_pos);
     EEPROM_WRITE_VAR(i,endstop_adj);
     EEPROM_WRITE_VAR(i,tower_adj);
+    EEPROM_WRITE_VAR(i,z_probe_offset);
   #endif
   #ifndef ULTIPANEL
   int plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP, plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP, plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED;
@@ -154,7 +155,7 @@ void Config_PrintSettings()
     SERIAL_ECHOLN("");
     #ifdef DELTA
       SERIAL_ECHO_START;
-      SERIAL_ECHOLNPGM("Endstop adjustment:");
+      SERIAL_ECHOLNPGM("Endstop adjustment (mm):");
       SERIAL_ECHO_START;
       SERIAL_ECHOPAIR("  M666 X",endstop_adj[0]);
       SERIAL_ECHOPAIR(" Y" ,endstop_adj[1]);
@@ -169,6 +170,7 @@ void Config_PrintSettings()
       SERIAL_ECHOPAIR(" R" ,delta_radius);
       SERIAL_ECHOPAIR(" D" ,delta_diagonal_rod);
       SERIAL_ECHOPAIR(" H" ,max_pos[2]);
+      SERIAL_ECHOPAIR(" P" ,z_probe_offset[3]);
       SERIAL_ECHOLN("");
 /*
       SERIAL_ECHOLN("Tower Positions");
@@ -229,6 +231,7 @@ void Config_RetrieveSettings()
           EEPROM_READ_VAR(i,max_pos);
           EEPROM_READ_VAR(i,endstop_adj);
           EEPROM_READ_VAR(i,tower_adj);
+          EEPROM_READ_VAR(i,z_probe_offset);
           // Update delta constants for updated delta_radius & tower_adj values
           set_delta_constants();
         #endif
@@ -293,10 +296,11 @@ void Config_ResetDefault()
     add_homeing[0] = add_homeing[1] = add_homeing[2] = 0;
     #ifdef DELTA
       delta_radius = DEFAULT_DELTA_RADIUS;
-	delta_diagonal_rod = DEFAULT_DELTA_DIAGONAL_ROD;
+      delta_diagonal_rod = DEFAULT_DELTA_DIAGONAL_ROD;
       endstop_adj[0] = endstop_adj[1] = endstop_adj[2] = 0;
       tower_adj[0] = tower_adj[1] = tower_adj[2] = 0;
-	max_pos[2] = MANUAL_Z_HOME_POS;
+      max_pos[2] = MANUAL_Z_HOME_POS;
+      set_default_z_probe_offset();
       set_delta_constants();
     #endif
 #ifdef ULTIPANEL

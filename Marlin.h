@@ -161,10 +161,13 @@ void ClearToSend();
 
 void get_coordinates();
 #ifdef DELTA
-float probe_bed(int bedpos, int lift);
+float probe_bed(float x, float y);
 void set_delta_constants();
 void home_delta_axis();
 void calibration_report();
+void set_default_z_probe_offset();
+void set_delta_constants();
+void save_carriage_positions(int position_num);
 void calculate_delta(float cartesian[3]);
 void adjust_delta(float cartesian[3]);
 extern float delta[3];
@@ -202,6 +205,7 @@ extern int extrudemultiply; // Sets extrude multiply factor (in percent)
 extern float current_position[NUM_AXIS] ;
 extern float add_homeing[3];
 #ifdef DELTA
+  extern float z_probe_offset[3];
   extern float endstop_adj[3];
   extern float tower_adj[3];
   extern float delta_radius;
