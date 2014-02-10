@@ -2273,6 +2273,9 @@ void process_commands()
            max_pos[Z_AXIS]= code_value();
 	     set_delta_constants();
          }
+	   if(code_seen('P')) {
+            z_probe_offset[Z_AXIS]= code_value();
+	   }
 	   if(code_seen('L')) {
 	     SERIAL_ECHOLN("Current Delta geometry values:");
 	     SERIAL_ECHOPAIR("X (Endstop Adj): ",endstop_adj[0]);
