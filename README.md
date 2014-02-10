@@ -15,7 +15,8 @@ includes the following updates:
 	    	 	  Hercek's Maxima calibration worksheet (deltabot google group).
 		R	- Delta radius (in mm).
 		D	- Diagonal rod length (in mm).
-		H	- Build height (in mm).   
+		H	- Max Z-Height (in mm).
+		P	- Set Z-Probe Z Offset.
    
 		All of these parameters can now be saved/loaded to EEPROM using M500 / M501 commands.
 		M502 will load default values for these parameters from configuration.h
@@ -37,7 +38,8 @@ includes the following updates:
 	        then re-doing G30 to see the result.
 
    		G30 A	- Perform delta autocalibration - will produce a G30 report for each stage of the calibration.
-
+		G30 X Y	- Probe bed at specified X,Y point and report bed height and carrage positions
+		G30 C	- Show carriage positions for last G30 report
            
 -  Add Z-Probe deploy / retract location variables to configuration.h:
 
