@@ -1462,10 +1462,24 @@ void process_commands()
          iterations = 100; //Maximum number of iterations
          int loopcount = 1;
          float adj_r_target, adj_dr_target;
-         float adj_ya, adj_xc;
+         float adj_r_target_delta = 0, adj_dr_target_delta = 0;
+         float saved_bed_level_c, saved_adj_r_target, saved_adj_dr_target;
+         float saved_delta_diagonal_rod = delta_diagonal_rod;
+         float adj_xa =0 , adj_ya = 0, adj_xc = 0;
          float adj_r = 0, adj_dr = 0;
+         float adj_r_mul = 1, adj_dr_mul = 1;
          boolean adj_r_done, adj_dr_done;
+         boolean adj_dr_allowed = true;
 
+         if (code_seen('D'))
+            {
+            //If delta rod length is specified in G30A G-Code command.. fix at this value and do not allow adjustment
+            delta_diagonal_rod = code_value();
+            adj_dr_allowed = false;
+            SERIAL_ECHOPAIR("Using diagional rod length: ", delta_diagonal_rod);
+            SERIAL_ECHOLN("mm (will not be adjusted)");
+            }
+         
          do {
             SERIAL_ECHO("Iteration: ");
             SERIAL_ECHO(loopcount);
@@ -1495,6 +1509,7 @@ void process_commands()
                  
                 adj_r_target = (bed_level_x + bed_level_y + bed_level_z) / 3;
                 adj_dr_target = (bed_level_ox + bed_level_oy + bed_level_oz) / 3;
+                adj_xa = ((bed_level_oy + bed_level_x)/2) - ((bed_level_ox + bed_level_y)/2);
                 adj_ya = bed_level_oz - ((bed_level_ox + bed_level_oy)/2);
                 adj_xc = bed_level_oy - bed_level_ox;
 
@@ -1513,16 +1528,23 @@ void process_commands()
                   if (adj_r == 0)
                     {
                     if (adj_r_target > bed_level_c) adj_r = 1.0; else adj_r = -1.0;
+                    adj_r_mul = 1;   
                     }
                   if (adj_dr == 0)
                     {
                     if (adj_r_target > adj_dr_target) adj_dr = 1.0; else adj_dr = -1.0;
+                    adj_dr_mul = 1;
                     }
                   
                   do {   
+                     saved_bed_level_c = bed_level_c;
+                     saved_adj_r_target = adj_r_target;
+                     saved_adj_dr_target = adj_dr_target;
+                     
                      //Apply adjustments 
-                     delta_radius += adj_r;
-                     delta_diagonal_rod += adj_dr;
+                     delta_radius += adj_r * adj_r_mul;
+                     if (adj_dr_allowed == true) delta_diagonal_rod += adj_dr * adj_dr_mul;
+                     tower_adj[0] -= adj_xa;
                      tower_adj[1] -= adj_ya;
 	             tower_adj[2] -= adj_xc;
                      set_delta_constants();              
@@ -1540,18 +1562,33 @@ void process_commands()
                      adj_ya = bed_level_oz - ((bed_level_ox + bed_level_oy)/2);
                      adj_xc = bed_level_oy - bed_level_ox;
                      
+                     //Modify multipliers based on previous adjustments
+                     if (saved_adj_r_target != 0)
+                       {
+                       adj_r_target_delta = abs(abs(bed_level_c - adj_r_target) - abs(saved_bed_level_c - saved_adj_r_target));
+                       adj_r_mul = abs(adj_r / adj_r_target_delta);
+                       }
+                     if (saved_adj_dr_target != 0)
+                       {
+                       adj_dr_target_delta = abs(abs(adj_r_target - adj_dr_target) - abs(saved_adj_r_target - saved_adj_dr_target));
+                       adj_dr_mul = abs(adj_dr / adj_dr_target_delta);
+                       }
+                     
+                       
                      if (((adj_r > 0) and (bed_level_c > adj_r_target)) or ((adj_r < 0) and (bed_level_c < adj_r_target)))
                        {
-                       //overshot target .. reverse and scale down adj magnitude
+                       //overshot target .. reverse and scale down adj var
                        if (abs(adj_r) > 0.0001) adj_r = adj_r /10;
                        adj_r = -adj_r;
+                       //adj_r_mul = 1;
                        }
                              
                      if (((adj_dr > 0) and (adj_dr_target > adj_r_target)) or ((adj_dr < 0) and (adj_dr_target < adj_r_target)))
                        {
-                       //overshot target .. reverse and scale down adj magnitude
+                       //overshot target .. reverse and scale down adj var
                        if (abs(adj_dr) > 0.0001) adj_dr = adj_dr /10;
                        adj_dr = -adj_dr;
+                       //adj_dr_mul = 1;
                        }
 
                      if ((bed_level_c >= adj_r_target - ac_prec) and (bed_level_c <= adj_r_target + ac_prec)) adj_r_done = true; else adj_r_done = false;
@@ -1570,6 +1607,7 @@ void process_commands()
                      SERIAL_ECHO(" diagrod:");
                      SERIAL_PROTOCOL_F(delta_diagonal_rod, 4);
                      SERIAL_ECHOLN("");
+                     SERIAL_ECHOPAIR("xa adj:",adj_xa);
                      SERIAL_ECHOPAIR("ya adj:",adj_ya);
                      SERIAL_ECHOPAIR("xc adj:",adj_xc);
                      SERIAL_ECHO("Radius Adj Complete: ");
@@ -1609,9 +1647,17 @@ void process_commands()
 
             SERIAL_ECHOLN("Auto Calibration Complete");
             SERIAL_ECHOLN("Issue M500 Command to save calibration settings to EPROM (if enabled)");
+            
+            if ((abs(delta_diagonal_rod - saved_delta_diagonal_rod) > 1) and (adj_dr_allowed == true))
+              {
+              SERIAL_ECHOLN("");
+              SERIAL_ECHOPAIR("WARNING: The length of diagonal rods specified (", saved_delta_diagonal_rod);
+              SERIAL_ECHOLN(" mm) appears to be incorrect");
+              SERIAL_ECHOLN("If you have measured your rods and you believe that this value is correct, this could indicate");
+              SERIAL_ECHOLN("excessive twisting movement of carriages and/or loose screws/joints on carriages or end effector");
+              }
             } 
      
-  
   	retract_z_probe();
  
         //Restore saved variables
