@@ -101,7 +101,7 @@
 #define AUTOCALIBRATION_PRECISION 0.03 // mm
 
 // Diameter of print bed (printable area)
-#define BED_DIAMETER 170 // mm
+#define BED_DIAMETER 160 // mm
 
 // Z-Probe variables
 // Start and end location values are used to deploy/retract the probe (will move from start to end and back again) 
