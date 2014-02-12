@@ -986,8 +986,8 @@ void calibrate_print_surface(float z_offset) {
     int dir = y % 2 ? -1 : 1;
     for (int x = -3*dir; x != 4*dir; x += dir) {
       if (x*x + y*y < 11) {
-	destination[X_AXIS] = AUTOLEVEL_GRID * x - z_probe_offset[X_AXIS];
-	destination[Y_AXIS] = AUTOLEVEL_GRID * y - z_probe_offset[Y_AXIS];
+	destination[X_AXIS] = AUTOLEVEL_GRID * x + z_probe_offset[X_AXIS];// - z_probe_offset[X_AXIS];
+	destination[Y_AXIS] = AUTOLEVEL_GRID * y + z_probe_offset[Y_AXIS];// - z_probe_offset[Y_AXIS];
 	bed_level[x+3][y+3] = z_probe() + z_offset;
       } else {
 	bed_level[x+3][y+3] = 0.0;
@@ -1376,6 +1376,21 @@ void process_commands()
       endstops_hit_on_purpose();
       break;
     case 29: // G29 Calibrate print surface with automatic Z probe.
+      if (code_seen('D'))
+        {
+        SERIAL_ECHOLN("Current bed level array values:");
+        SERIAL_ECHOLN("");
+        for (int y = 0; y < 7; y++)
+          {
+          for (int x = 0; x < 7; x++)
+            {
+            SERIAL_PROTOCOL_F(bed_level[x][y], 3);
+            SERIAL_PROTOCOLPGM(" ");
+            }
+          SERIAL_ECHOLN("");
+          }
+        break;
+        }
       saved_feedrate = feedrate;
       saved_feedmultiply = feedmultiply;
       feedmultiply = 100;
@@ -1447,8 +1462,7 @@ void process_commands()
          if (code_seen('D')) 
            {  
            SERIAL_ECHOPAIR("Using diagional rod length: ", delta_diagonal_rod);
-           SERIAL_ECHOLN("mm");
-           SERIAL_ECHOLN("(will not be adjusted)");
+           SERIAL_ECHOLN("mm (will not be adjusted)");
            }
          }
       
@@ -1614,6 +1628,7 @@ void process_commands()
                      if ((bed_level_c >= adj_r_target - ac_prec) and (bed_level_c <= adj_r_target + ac_prec)) adj_r_done = true; else adj_r_done = false;
                      if ((adj_dr_target >= adj_r_target - ac_prec) and (adj_dr_target <= adj_r_target + ac_prec)) adj_dr_done = true; else adj_dr_done = false;
  
+                     /*
                      SERIAL_ECHOPAIR("c: ", bed_level_c);
                      SERIAL_ECHOPAIR(" x: ", bed_level_x);
                      SERIAL_ECHOPAIR(" y: ", bed_level_y);
@@ -1635,7 +1650,26 @@ void process_commands()
                      SERIAL_ECHO(" DiagRod Adj Complete: ");
                      if (adj_dr_done == true) SERIAL_ECHO("Yes"); else SERIAL_ECHO("No");
                      SERIAL_ECHOLN("");
-                     } while((adj_r_done == false) or (adj_dr_done == false));//  or (adj_ya != 0) or (adj_xc != 0));
+                     */
+                     if ((adj_xa != 0) or (adj_ya !=0) or (adj_xc != 0)) 
+                       {
+                       SERIAL_ECHOPAIR("Adjusting tower positions: X(", adj_xa); 
+                       SERIAL_ECHOPAIR(") Y(", adj_ya);
+                       SERIAL_ECHOPAIR(") Z(", adj_xc);
+                       SERIAL_ECHOLN(")...");
+                       }
+                     if (adj_r_done == false)
+                       {
+                       SERIAL_ECHOPAIR("Adjusting Delta Radius (",delta_radius);
+                       SERIAL_ECHOLN(")...");
+                       }
+                     if (adj_dr_done == false)
+                       {
+                       SERIAL_ECHOPAIR("Adjusting Diag Rod Length (",delta_diagonal_rod);
+                       SERIAL_ECHOLN(")...");
+                       }
+
+                   } while((adj_r_done == false) or (adj_dr_done == false));//  or (adj_ya != 0) or (adj_xc != 0));
 
                    if (abs(adj_r) < 0.001) adj_r = adj_r * 10;
 
