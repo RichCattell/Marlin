@@ -458,9 +458,9 @@ static void lcd_implementation_status_screen()
 #  else
     lcd.setCursor(0,1);
     lcd.print('X');
-    lcd.print(ftostr3(current_position[X_AXIS]));
+    lcd.print(ftostr30(current_position[X_AXIS]));
     lcd_printPGM(PSTR(" Y"));
-    lcd.print(ftostr3(current_position[Y_AXIS]));
+    lcd.print(ftostr30(current_position[Y_AXIS]));
 #  endif//EXTRUDERS > 1 || TEMP_SENSOR_BED != 0
 # endif//LCD_WIDTH > 19
     lcd.setCursor(LCD_WIDTH - 8, 1);

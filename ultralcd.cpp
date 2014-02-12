@@ -1297,6 +1297,19 @@ char *itostr4(const int &xx)
   return conv;
 }
 
+// convert float to string with +123 format
+char *ftostr30(const float &x)
+{
+int xx=x;
+conv[0]=(xx>=0)?'+':'-';
+xx=abs(xx);
+conv[1]=(xx/100)%10+'0';
+conv[2]=(xx/10)%10+'0';
+conv[3]=(xx)%10+'0';
+conv[4]=0;
+return conv;
+}
+
 //  convert float to string with 12345 format
 char *ftostr5(const float &x)
 {
