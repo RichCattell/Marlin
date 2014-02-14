@@ -925,6 +925,7 @@ void retract_z_probe() {
   destination[X_AXIS] = z_probe_retract_start_location[X_AXIS];
   destination[Y_AXIS] = z_probe_retract_start_location[Y_AXIS];
   destination[Z_AXIS] = z_probe_retract_start_location[Z_AXIS];
+  prepare_move();
   prepare_move_raw();
 
   // Move the nozzle below the print surface to push the probe up.
@@ -982,12 +983,21 @@ float z_probe() {
 }
 
 void calibrate_print_surface(float z_offset) {
-  for (int y = 3; y >= -3; y--) {
+  //Zero the array
+  for (int y = 0; y >=6; y++)
+    {
+      for (int x = 0; x >=6; y++)
+        {
+          bed_level[x][y] = 0.0;
+        }
+    }
+  for (int y = -3; y <= 3; y++) {
     int dir = y % 2 ? -1 : 1;
     for (int x = -3*dir; x != 4*dir; x += dir) {
       if (x*x + y*y < 11) {
-	destination[X_AXIS] = AUTOLEVEL_GRID * x + z_probe_offset[X_AXIS];// - z_probe_offset[X_AXIS];
-	destination[Y_AXIS] = AUTOLEVEL_GRID * y + z_probe_offset[Y_AXIS];// - z_probe_offset[Y_AXIS];
+	destination[X_AXIS] = AUTOLEVEL_GRID * x - z_probe_offset[X_AXIS];
+	destination[Y_AXIS] = AUTOLEVEL_GRID * y - z_probe_offset[Y_AXIS];
+        prepare_move();
 	bed_level[x+3][y+3] = z_probe() + z_offset;
       } else {
 	bed_level[x+3][y+3] = 0.0;
@@ -1015,16 +1025,16 @@ float probe_bed(float x, float y)
   {
   //Probe bed at specified location and return z height of bed
   float probe_bed_z;
-  feedrate = homing_feedrate[Z_AXIS] * 10;
+//  feedrate = homing_feedrate[Z_AXIS];
   destination[X_AXIS] = x - z_probe_offset[X_AXIS];
   destination[Y_AXIS] = y - z_probe_offset[Y_AXIS];
-  destination[Z_AXIS] = bed_level_c + 6 - z_probe_offset[Z_AXIS]; //was 8
-  prepare_move_raw();
+  destination[Z_AXIS] = bed_level_c - z_probe_offset[Z_AXIS] + 3;
+  prepare_move();
   st_synchronize();
   probe_bed_z = z_probe() + z_probe_offset[Z_AXIS];
-  destination[Z_AXIS] = destination[Z_AXIS] + 5; //was 5
-  prepare_move_raw();
-  st_synchronize();
+  //destination[Z_AXIS] = destination[Z_AXIS] + 5; //was 5
+  //prepare_move();
+  //st_synchronize();
 
   /*
   SERIAL_ECHO("Bed Z-Height at X:");
@@ -1380,7 +1390,7 @@ void process_commands()
         {
         SERIAL_ECHOLN("Current bed level array values:");
         SERIAL_ECHOLN("");
-        for (int y = 0; y < 7; y++)
+        for (int y = 6; y >= 0; y--)
           {
           for (int x = 0; x < 7; x++)
             {
@@ -1398,6 +1408,7 @@ void process_commands()
       deploy_z_probe();
       calibrate_print_surface(z_probe_offset[Z_AXIS] +
 	(code_seen(axis_codes[Z_AXIS]) ? code_value() : 0.0));
+      
       retract_z_probe();
 
       feedrate = saved_feedrate;
@@ -1448,10 +1459,10 @@ void process_commands()
           SERIAL_ECHO(", ");
           SERIAL_ECHO(saved_position[Z_AXIS]);
           SERIAL_ECHOLN("]");
+          retract_z_probe();
           break;
           }
-
-
+          
        saved_feedrate = feedrate;
        saved_feedmultiply = feedmultiply;
        feedmultiply = 100;
@@ -1465,18 +1476,18 @@ void process_commands()
            SERIAL_ECHOLN("mm (will not be adjusted)");
            }
          }
+        //Zero the bedlevel array in case this affects bed probing
+        for (int y = 0; y >=6; y++)
+          {
+          for (int x = 0; x >=6; y++)
+            {
+            bed_level[x][y] = 0.0;
+            }
+        }
       
        home_delta_axis();
-       deploy_z_probe();  
-       
-       //Move to safe start position (to avoid crashing into bed)
-       destination[X_AXIS] = -z_probe_offset[X_AXIS];
-       destination[Y_AXIS] = -z_probe_offset[Y_AXIS];
-       feedrate = homing_feedrate[X_AXIS];
-       destination[Z_AXIS] = bed_level_c + 8 - z_probe_offset[Z_AXIS];
-       prepare_move_raw();
-       st_synchronize();
-             
+       deploy_z_probe(); 
+      
        //Probe all bed positions and show report      
        calibration_report();
   
@@ -1491,14 +1502,15 @@ void process_commands()
          float adj_xa, adj_ya, adj_xc;
          float adj_r = 0, adj_dr = 0;
          float adj_r_mul = 1, adj_dr_mul = 1;
+         float adj_prev_mul;
          boolean adj_r_done, adj_dr_done;
          boolean adj_dr_allowed = true;
 
          if (code_seen('D'))
             {
-            //If delta rod length is specified in G30A G-Code command.. fix at this value and do not allow adjustment
+            //Fix diagonal rod at specified length (do not adjust)
             delta_diagonal_rod = code_value();
-            adj_dr_allowed = false;
+            adj_dr_allowed = true;
             }
          
          do {
@@ -1512,7 +1524,7 @@ void process_commands()
               set_delta_constants();
               SERIAL_ECHOPAIR("Adjusting Z-Height to: ", max_pos[Z_AXIS]);
               SERIAL_ECHOLN(" mm..");
-              bed_level_c = 45; // Safe distance for changed z-height (to avoid crashing into bed on next probe)
+              //bed_level_c = 45; // Safe distance for changed z-height (to avoid crashing into bed on next probe)
               } 
               else
               {  
@@ -1538,12 +1550,11 @@ void process_commands()
                 adj_xc = bed_level_ox - bed_level_oy;
 
                 //Determine which parameters require adjustment
-                if ((bed_level_c >= adj_r_target - ac_prec/4) and (bed_level_c <= adj_r_target + ac_prec/4)) adj_r_done = true; else adj_r_done = false;
-                //if (bed_level_c == adj_r_target) adj_r_done = true; else adj_r_done = false;
-                if ((adj_dr_target >= adj_r_target - ac_prec/4) and (adj_dr_target <= adj_r_target + ac_prec/4)) adj_dr_done = true; else adj_dr_done = false;
-                //if (adj_dr_target == adj_r_target) adj_dr_done = true; else adj_dr_done = false;
-            
-                if ((adj_r_done == false) or (adj_dr_done == false) or (adj_ya != 0) or (adj_xc != 0))
+                if (bed_level_c == adj_r_target) adj_r_done = true; else adj_r_done = false;
+                if (adj_dr_target == adj_r_target) adj_dr_done = true; else adj_dr_done = false;
+                            
+                //if ((adj_r_done == false) or (adj_dr_done == false) or (adj_ya != 0) or (adj_xc != 0))
+                if ((adj_r_done == false) or (adj_dr_done == false) or (adj_xa != 0) or (adj_ya != 0) or (adj_xc != 0))
                   {
                   //delta geometry adjustment required                     
                   SERIAL_ECHOLN("Adjusting Delta Geometry..");
@@ -1551,12 +1562,13 @@ void process_commands()
                   //set inital direction and magnitude for delta radius & diagonal rod adjustment
                   if (adj_r == 0)
                     {
-                    if (adj_r_target > bed_level_c) adj_r = 1.0; else adj_r = -1.0;
+                    if (adj_r_target > bed_level_c) adj_r = 0.1; else adj_r = -0.1;
                     adj_r_mul = 1;   
                     }
+                  
                   if (adj_dr == 0)
                     {
-                    if (adj_r_target > adj_dr_target) adj_dr = 1.0; else adj_dr = -1.0;
+                    if (adj_r_target > adj_dr_target) adj_dr = 0.1; else adj_dr = -0.1;
                     adj_dr_mul = 1;
                     }
                   
@@ -1566,8 +1578,8 @@ void process_commands()
                      saved_adj_dr_target = adj_dr_target;
                      
                      //Apply adjustments 
-                     delta_radius += adj_r * adj_r_mul;
-                     if (adj_dr_allowed == true) delta_diagonal_rod += adj_dr * adj_dr_mul;
+                     if (adj_r_done == false) delta_radius += adj_r * adj_r_mul;
+                     if ((adj_dr_allowed == true) and (adj_dr_done == false)) delta_diagonal_rod += adj_dr * adj_dr_mul;
                      tower_adj[0] += adj_xa;
                      tower_adj[1] += adj_ya;
 	             tower_adj[2] += adj_xc;
@@ -1590,40 +1602,49 @@ void process_commands()
                      //tower z position adjust
                      adj_xc = bed_level_ox - bed_level_oy;
      
+     
                      //Modify multipliers based on previous adjustments
                      if (saved_adj_r_target != 0)
                        {
-                       adj_r_target_delta = abs(abs(bed_level_c - adj_r_target) - abs(saved_bed_level_c - saved_adj_r_target));
-                       adj_r_mul = 1; //abs(adj_r / adj_r_target_delta);
-                       //SERIAL_ECHOPAIR("adj_r = ", adj_r);
-                       //SERIAL_ECHOPAIR("adj_r_target_delta = ", adj_r_target_delta);
-                       //SERIAL_ECHOPAIR("adj_r_mul = ", adj_r_mul);
-                       }
+                       adj_prev_mul = abs((saved_bed_level_c - saved_adj_r_target) / (adj_r_mul*adj_r));  
+                       adj_r_target_delta = abs(bed_level_c - adj_r_target);
+                       adj_r_mul = adj_r_target_delta * adj_prev_mul;
+                       /*
+                       SERIAL_ECHOPAIR("adj_r = ", adj_r);
+                       SERIAL_ECHOPAIR("adj_prev_mul = ", adj_prev_mul);
+                       SERIAL_ECHOPAIR("adj_r_target_delta = ", adj_r_target_delta);
+                       SERIAL_ECHOPAIR("adj_r_mul = ", adj_r_mul);
+                       */
+                       if (adj_r_mul > 8) adj_r_mul = 8;  
+                     }
+                     
                      if (saved_adj_dr_target != 0)
                        {
-                       adj_dr_target_delta = abs(abs(adj_r_target - adj_dr_target) - abs(saved_adj_r_target - saved_adj_dr_target));
-                       adj_dr_mul = 1; //abs(adj_dr / adj_dr_target_delta);
-                       //SERIAL_ECHOPAIR("adj_dr = ", adj_dr);
-                       //SERIAL_ECHOPAIR("adj_dr_target_delta = ", adj_dr_target_delta);
-                       //SERIAL_ECHOPAIR("adj_dr_mul = ", adj_dr_mul);
+                       adj_prev_mul = abs((saved_adj_r_target - saved_adj_dr_target) / (adj_dr_mul*adj_dr));  
+                       adj_dr_target_delta = abs(adj_r_target - adj_dr_target);
+                       adj_dr_mul = adj_dr_target_delta * adj_prev_mul;
+                       /*
+                       SERIAL_ECHOPAIR("adj_dr = ", adj_dr);
+                       SERIAL_ECHOPAIR("adj_prev_mul = ", adj_prev_mul);
+                       SERIAL_ECHOPAIR("adj_dr_target_delta = ", adj_dr_target_delta);
+                       SERIAL_ECHOPAIR("adj_dr_mul = ", adj_dr_mul);
+                       */
+                       if (adj_dr_mul > 8) adj_dr_mul = 8;
                        }
                      
                        
                      if (((adj_r > 0) and (bed_level_c > adj_r_target)) or ((adj_r < 0) and (bed_level_c < adj_r_target)))
                        {
-                       //overshot target .. reverse and scale down adj var
-                       if (abs(adj_r) > 0.0001) adj_r = adj_r / 10;
+                       //overshot target .. reverse
                        adj_r = -adj_r;
-                       //adj_r_mul = 1;
                        }
                              
                      if (((adj_dr > 0) and (adj_dr_target > adj_r_target)) or ((adj_dr < 0) and (adj_dr_target < adj_r_target)))
                        {
-                       //overshot target .. reverse and scale down adj var
-                       if (abs(adj_dr) > 0.0001) adj_dr = adj_dr / 10;
+                       //overshot target .. reverse 
                        adj_dr = -adj_dr;
-                       //adj_dr_mul = 1;
                        }
+                     
 
                      if ((bed_level_c >= adj_r_target - ac_prec) and (bed_level_c <= adj_r_target + ac_prec)) adj_r_done = true; else adj_r_done = false;
                      if ((adj_dr_target >= adj_r_target - ac_prec) and (adj_dr_target <= adj_r_target + ac_prec)) adj_dr_done = true; else adj_dr_done = false;
@@ -1656,24 +1677,24 @@ void process_commands()
                        SERIAL_ECHOPAIR("Adjusting tower positions: X(", adj_xa); 
                        SERIAL_ECHOPAIR(") Y(", adj_ya);
                        SERIAL_ECHOPAIR(") Z(", adj_xc);
-                       SERIAL_ECHOLN(")...");
+                       SERIAL_ECHOLN(")");
                        }
                      if (adj_r_done == false)
                        {
                        SERIAL_ECHOPAIR("Adjusting Delta Radius (",delta_radius);
-                       SERIAL_ECHOLN(")...");
+                       SERIAL_ECHOLN(")");
                        }
+                       
                      if (adj_dr_done == false)
                        {
                        SERIAL_ECHOPAIR("Adjusting Diag Rod Length (",delta_diagonal_rod);
-                       SERIAL_ECHOLN(")...");
+                       SERIAL_ECHOLN(")");
                        }
+                    
+                   } while((adj_r_done == false) or (adj_dr_done = false));//  or (adj_ya != 0) or (adj_xc != 0));
 
-                   } while((adj_r_done == false) or (adj_dr_done == false));//  or (adj_ya != 0) or (adj_xc != 0));
-
-                   if (abs(adj_r) < 0.001) adj_r = adj_r * 10;
-
-                   if (abs(adj_dr) < 0.001) adj_dr = adj_dr * 10;
+                   //if (abs(adj_r) < 0.001) adj_r = adj_r * 10;
+                   //if (abs(adj_dr) < 0.001) adj_dr = adj_dr * 10;
                    }
                    else
                    {
@@ -3141,15 +3162,15 @@ void clamp_to_software_endstops(float target[3])
 #ifdef DELTA
 void calculate_delta(float cartesian[3]) 
 {
-  delta_tmp[X_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
+  delta[X_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
                        - sq(delta_tower1_x-cartesian[X_AXIS])
                        - sq(delta_tower1_y-cartesian[Y_AXIS])
                        ) + cartesian[Z_AXIS];
-  delta_tmp[Y_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
+  delta[Y_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
                        - sq(delta_tower2_x-cartesian[X_AXIS])
                        - sq(delta_tower2_y-cartesian[Y_AXIS])
                        ) + cartesian[Z_AXIS];
-  delta_tmp[Z_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
+  delta[Z_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
                        - sq(delta_tower3_x-cartesian[X_AXIS])
                        - sq(delta_tower3_y-cartesian[Y_AXIS])
                        ) + cartesian[Z_AXIS];
@@ -3164,13 +3185,14 @@ void calculate_delta(float cartesian[3])
   SERIAL_ECHOPGM(" y="); SERIAL_ECHO(delta[Y_AXIS]);
   SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(delta[Z_AXIS]);
   */
-  
+  /*
   if ((delta_tmp[X_AXIS] > 0) and (delta_tmp[Y_AXIS] > 0) and (delta_tmp[Z_AXIS] > 0))
     {
       delta[X_AXIS] = delta_tmp[X_AXIS];
       delta[Y_AXIS] = delta_tmp[Y_AXIS];
       delta[Z_AXIS] = delta_tmp[Z_AXIS];
     } else SERIAL_ECHOLN("ERROR: Invalid delta coordinates!");
+*/
 }
 
 
