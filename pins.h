@@ -372,7 +372,7 @@
     #define Z_STEP_PIN         46
     #define Z_DIR_PIN          48
     #define Z_ENABLE_PIN       62
-    #define Z_MIN_PIN          18 // autolevel probe for deltabot
+    #define Z_MIN_PIN          14 // autolevel probe for deltabot
     #define Z_MAX_PIN          19
 
     #define Z2_STEP_PIN        36
