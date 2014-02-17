@@ -1505,6 +1505,35 @@ void process_commands()
          float adj_prev_mul;
          boolean adj_r_done, adj_dr_done;
          boolean adj_dr_allowed = true;
+         float h_endstop = 0, l_endstop = 0;
+         
+         //Check that endstops are within limits
+         if (bed_level_x + endstop_adj[0] > h_endstop) h_endstop = bed_level_x + endstop_adj[0];
+         if (bed_level_x + endstop_adj[0] < l_endstop) l_endstop = bed_level_x + endstop_adj[0];
+         if (bed_level_y + endstop_adj[1] > h_endstop) h_endstop = bed_level_y + endstop_adj[1];
+         if (bed_level_y + endstop_adj[1] < l_endstop) l_endstop = bed_level_y + endstop_adj[1];
+         if (bed_level_z + endstop_adj[2] > h_endstop) h_endstop = bed_level_z + endstop_adj[2];
+         if (bed_level_z + endstop_adj[2] < l_endstop) l_endstop = bed_level_x + endstop_adj[2];
+
+         if (h_endstop - l_endstop > 2)
+            {
+            SERIAL_ECHOLN("The position of the endstop switches on this printer are not within limits");
+            SERIAL_ECHOLN("Please adjust endstop switches so that they are all within 2mm of each other");
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("Current Endstop Positions - X: ", bed_level_x + endstop_adj[0]);
+            SERIAL_ECHOPAIR(" Y: ", bed_level_y + endstop_adj[1]);
+            SERIAL_ECHOPAIR(" Z: ", bed_level_z + endstop_adj[2]);
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOLN("Autocalibration aborted");
+            
+            retract_z_probe();
+ 
+            //Restore saved variables
+            feedrate = saved_feedrate;
+            feedmultiply = saved_feedmultiply;
+            break;
+            }
 
          if (code_seen('D'))
             {
@@ -1517,6 +1546,7 @@ void process_commands()
             SERIAL_ECHO("Iteration: ");
             SERIAL_ECHO(loopcount);
             SERIAL_ECHOLN("");
+                                 
             if ((bed_level_c > 3) or (bed_level_c < -3))
               {
               //Build height is not set correctly .. 
@@ -1524,10 +1554,9 @@ void process_commands()
               set_delta_constants();
               SERIAL_ECHOPAIR("Adjusting Z-Height to: ", max_pos[Z_AXIS]);
               SERIAL_ECHOLN(" mm..");
-              //bed_level_c = 45; // Safe distance for changed z-height (to avoid crashing into bed on next probe)
               } 
               else
-              {  
+              {
               if ((bed_level_x < -ac_prec) or (bed_level_x > ac_prec) or (bed_level_y < -ac_prec) or (bed_level_y > ac_prec) or (bed_level_z < -ac_prec) or (bed_level_z > ac_prec))
                 {  
                 //Endstops req adjustment
@@ -1535,6 +1564,26 @@ void process_commands()
                 endstop_adj[0] += bed_level_x;
                 endstop_adj[1] += bed_level_y;
                 endstop_adj[2] += bed_level_z; 
+                
+                //Check that no endstop adj values are > 0 (not allowed).. if they are, move other endstops down instead.
+                if (endstop_adj[0] > 0) 
+                  {
+                  endstop_adj[1] -= endstop_adj[0];
+                  endstop_adj[2] -= endstop_adj[0];
+                  endstop_adj[0] = 0;
+                  }
+                if (endstop_adj[1] > 0) 
+                  {
+                  endstop_adj[0] -= endstop_adj[1];
+                  endstop_adj[2] -= endstop_adj[1];
+                  endstop_adj[1] = 0;
+                  }
+                if (endstop_adj[2] > 0) 
+                  {
+                  endstop_adj[0] -= endstop_adj[2];
+                  endstop_adj[1] -= endstop_adj[2];
+                  endstop_adj[2] = 0;
+                  }
                 }
                 else 
                 {
@@ -1553,7 +1602,6 @@ void process_commands()
                 if (bed_level_c == adj_r_target) adj_r_done = true; else adj_r_done = false;
                 if (adj_dr_target == adj_r_target) adj_dr_done = true; else adj_dr_done = false;
                             
-                //if ((adj_r_done == false) or (adj_dr_done == false) or (adj_ya != 0) or (adj_xc != 0))
                 if ((adj_r_done == false) or (adj_dr_done == false) or (adj_xa != 0) or (adj_ya != 0) or (adj_xc != 0))
                   {
                   //delta geometry adjustment required                     
@@ -1692,9 +1740,6 @@ void process_commands()
                        }
                     
                    } while((adj_r_done == false) or (adj_dr_done = false));//  or (adj_ya != 0) or (adj_xc != 0));
-
-                   //if (abs(adj_r) < 0.001) adj_r = adj_r * 10;
-                   //if (abs(adj_dr) < 0.001) adj_dr = adj_dr * 10;
                    }
                    else
                    {
