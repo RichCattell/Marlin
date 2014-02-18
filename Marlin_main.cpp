@@ -1049,7 +1049,41 @@ float probe_bed(float x, float y)
   return probe_bed_z;
   }
   
-void calibration_report()
+float z_probe_accuracy()
+  {  
+  //Perform z-probe accuracy test
+  float probe_h[7] = {0};
+  float probe_l[7] = {0};
+  float range_h = 0, range_l = 0;
+  // probe test loop  
+  for(int x=0; x<3; x++)
+   {
+   bed_probe_all();
+   
+   if (bed_level_c > probe_h[0]) probe_h[0] = bed_level_c;
+   if (bed_level_c < probe_l[0]) probe_l[0] = bed_level_c;
+   if (bed_level_z > probe_h[1]) probe_h[1] = bed_level_z;
+   if (bed_level_z < probe_l[1]) probe_l[1] = bed_level_z;
+   if (bed_level_oy > probe_h[2]) probe_h[2] = bed_level_oy;
+   if (bed_level_oy < probe_l[2]) probe_l[2] = bed_level_oy;
+   if (bed_level_x > probe_h[3]) probe_h[3] = bed_level_x;
+   if (bed_level_x < probe_l[3]) probe_l[3] = bed_level_x;
+   if (bed_level_oz > probe_h[4]) probe_h[4] = bed_level_oz;
+   if (bed_level_oz < probe_l[4]) probe_l[4] = bed_level_oz;
+   if (bed_level_y > probe_h[5]) probe_h[5] = bed_level_y;
+   if (bed_level_y < probe_l[5]) probe_l[5] = bed_level_y;
+   if (bed_level_ox > probe_h[6]) probe_h[6] = bed_level_ox;
+   if (bed_level_ox < probe_l[6]) probe_l[6] = bed_level_ox;
+   }
+   for(int x=0; x < 7; x++)
+     {
+     if (probe_h[x] - probe_l[x] > range_h) range_h = probe_h[x] - probe_l[x];
+     if (probe_h[x] - probe_l[x] < range_l) range_l = probe_h[x] - probe_l[x];
+     }
+  return range_h - range_l;
+  }
+  
+void bed_probe_all()
   {
   //Probe all bed positions & store carriage positions
   bed_level_c = probe_bed(0.0, 0.0);      
@@ -1065,8 +1099,14 @@ void calibration_report()
   bed_level_y = probe_bed(SIN_60 * bed_radius, -COS_60 * bed_radius);
   save_carriage_positions(5);
   bed_level_ox = probe_bed(SIN_60 * bed_radius, COS_60 * bed_radius);
-  save_carriage_positions(6);
-
+  save_carriage_positions(6);    
+  }
+  
+void calibration_report()
+  {
+  //probe all bed positions
+  bed_probe_all();
+  
   //Display Report
   SERIAL_ECHOLN(";\tZ-Tower");
 
@@ -1418,6 +1458,7 @@ void process_commands()
       break;
     case 30: //G30 Delta AutoCalibration
       int iterations;
+      float probe_accuracy;
       
       if (code_seen('C'))
         {
@@ -1488,7 +1529,29 @@ void process_commands()
        home_delta_axis();
        deploy_z_probe(); 
       
-       //Probe all bed positions and show report      
+       //Probe all bed locations and check probe accuracy      
+       probe_accuracy = z_probe_accuracy();
+       SERIAL_ECHOPAIR("Z-Probe accuracy: ", probe_accuracy);
+       SERIAL_ECHO(" mm ");
+       
+       if (probe_accuracy < 0.03) 
+         {
+         SERIAL_ECHOLN("(OK)");
+         }
+       else
+         {
+         SERIAL_ECHOLN("(FAILED)");
+         SERIAL_ECHOLN("Z-Probe is not accurate enough to perform auto-calibration");
+
+         retract_z_probe();
+ 
+         //Restore saved variables
+         feedrate = saved_feedrate;
+         feedmultiply = saved_feedmultiply;
+         break;
+         }
+
+       //Show calibration report      
        calibration_report();
   
       if (code_seen('A')) 
@@ -1518,9 +1581,9 @@ void process_commands()
          if (h_endstop - l_endstop > 2)
             {
             SERIAL_ECHOLN("The position of the endstop switches on this printer are not within limits");
-            SERIAL_ECHOLN("Please adjust endstop switches so that they are all within 2mm of each other");
+            SERIAL_ECHOLN("Please adjust endstop switches so that they are all within 2mm Z-height of each other");
             SERIAL_ECHOLN("");
-            SERIAL_ECHOPAIR("Current Endstop Positions - X: ", bed_level_x + endstop_adj[0]);
+            SERIAL_ECHOPAIR("Current Endstop Positions - X: ", bed_level_x + endstop_adj[0]); 
             SERIAL_ECHOPAIR(" Y: ", bed_level_y + endstop_adj[1]);
             SERIAL_ECHOPAIR(" Z: ", bed_level_z + endstop_adj[2]);
             SERIAL_ECHOLN("");
