@@ -1052,9 +1052,16 @@ float probe_bed(float x, float y)
 float z_probe_accuracy()
   {  
   //Perform z-probe accuracy test
-  float probe_h[7] = {0};
-  float probe_l[7] = {0};
+  float probe_h[7];
+  float probe_l[7];
   float range_h = 0, range_l = 0;
+  
+  for(int x=0; x < 7; x++)
+    {
+    probe_h[x] = -100;
+    probe_l[x] = 100;
+    }
+    
   // probe test loop  
   for(int x=0; x<3; x++)
    {
@@ -1458,7 +1465,6 @@ void process_commands()
       break;
     case 30: //G30 Delta AutoCalibration
       int iterations;
-      float probe_accuracy;
       
       if (code_seen('C'))
         {
@@ -1529,28 +1535,6 @@ void process_commands()
        home_delta_axis();
        deploy_z_probe(); 
       
-       //Probe all bed locations and check probe accuracy      
-       probe_accuracy = z_probe_accuracy();
-       SERIAL_ECHOPAIR("Z-Probe accuracy: ", probe_accuracy);
-       SERIAL_ECHO(" mm ");
-       
-       if (probe_accuracy < 0.03) 
-         {
-         SERIAL_ECHOLN("(OK)");
-         }
-       else
-         {
-         SERIAL_ECHOLN("(FAILED)");
-         SERIAL_ECHOLN("Z-Probe is not accurate enough to perform auto-calibration");
-
-         retract_z_probe();
- 
-         //Restore saved variables
-         feedrate = saved_feedrate;
-         feedmultiply = saved_feedmultiply;
-         break;
-         }
-
        //Show calibration report      
        calibration_report();
   
@@ -1569,6 +1553,7 @@ void process_commands()
          boolean adj_r_done, adj_dr_done;
          boolean adj_dr_allowed = true;
          float h_endstop = 0, l_endstop = 0;
+         float probe_accuracy;
          
          //Check that endstops are within limits
          if (bed_level_x + endstop_adj[0] > h_endstop) h_endstop = bed_level_x + endstop_adj[0];
@@ -1581,7 +1566,7 @@ void process_commands()
          if (h_endstop - l_endstop > 2)
             {
             SERIAL_ECHOLN("The position of the endstop switches on this printer are not within limits");
-            SERIAL_ECHOLN("Please adjust endstop switches so that they are all within 2mm Z-height of each other");
+            SERIAL_ECHOLN("Adjust endstop switches so that they are within 2mm Z-height of each other");
             SERIAL_ECHOLN("");
             SERIAL_ECHOPAIR("Current Endstop Positions - X: ", bed_level_x + endstop_adj[0]); 
             SERIAL_ECHOPAIR(" Y: ", bed_level_y + endstop_adj[1]);
@@ -1597,6 +1582,28 @@ void process_commands()
             feedmultiply = saved_feedmultiply;
             break;
             }
+
+         //Probe all bed locations and check probe accuracy      
+         probe_accuracy = z_probe_accuracy();
+         SERIAL_ECHOPAIR("Z-Probe accuracy: ", probe_accuracy);
+         SERIAL_ECHO(" mm ");
+       
+         if (probe_accuracy < 0.03) 
+           {
+           SERIAL_ECHOLN("(OK)");
+           }
+         else
+           {
+           SERIAL_ECHOLN("(FAILED)");
+           SERIAL_ECHOLN("Z-Probe is not accurate enough to perform auto-calibration");
+
+           retract_z_probe(); 
+ 
+           //Restore saved variables
+           feedrate = saved_feedrate;
+           feedmultiply = saved_feedmultiply;
+           break;
+           }
 
          if (code_seen('D'))
             {
