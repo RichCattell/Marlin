@@ -1024,18 +1024,34 @@ void calibrate_print_surface(float z_offset) {
 float probe_bed(float x, float y)
   {
   //Probe bed at specified location and return z height of bed
-  float probe_bed_z;
+  float probe_bed_z, probe_z, probe_h, probe_l;
+  int probe_count;
 //  feedrate = homing_feedrate[Z_AXIS];
   destination[X_AXIS] = x - z_probe_offset[X_AXIS];
   destination[Y_AXIS] = y - z_probe_offset[Y_AXIS];
   destination[Z_AXIS] = bed_level_c - z_probe_offset[Z_AXIS] + 3;
   prepare_move();
   st_synchronize();
-  probe_bed_z = z_probe() + z_probe_offset[Z_AXIS];
-  //destination[Z_AXIS] = destination[Z_AXIS] + 5; //was 5
-  //prepare_move();
-  //st_synchronize();
 
+  probe_count = 0;
+  probe_z = -100;
+  probe_h = probe_l = 0.0;
+  do {
+    probe_bed_z = probe_z;
+    probe_z = z_probe() + z_probe_offset[Z_AXIS];
+    if (probe_z > probe_h) probe_h = probe_z;
+    if (probe_z < probe_l) probe_l = probe_z;
+    probe_count ++;
+    } while (probe_z != probe_bed_z);
+    
+  if (probe_count > 2)
+    {
+    SERIAL_ECHO("Z-Probe error: ");
+    SERIAL_PROTOCOL_F(probe_h - probe_l, 4);
+    SERIAL_ECHO("mm in ");
+    SERIAL_ECHO(probe_count);
+    SERIAL_ECHO(" probes");
+    }
   /*
   SERIAL_ECHO("Bed Z-Height at X:");
   SERIAL_ECHO(x);
@@ -1048,7 +1064,7 @@ float probe_bed(float x, float y)
 
   return probe_bed_z;
   }
-  
+
 float z_probe_accuracy()
   {  
   //Perform z-probe accuracy test
@@ -1553,7 +1569,7 @@ void process_commands()
          boolean adj_r_done, adj_dr_done;
          boolean adj_dr_allowed = true;
          float h_endstop = 0, l_endstop = 0;
-         float probe_accuracy;
+         float probe_error;
          
          //Check that endstops are within limits
          if (bed_level_x + endstop_adj[0] > h_endstop) h_endstop = bed_level_x + endstop_adj[0];
@@ -1583,12 +1599,15 @@ void process_commands()
             break;
             }
 
+
+        /*
          //Probe all bed locations and check probe accuracy      
-         probe_accuracy = z_probe_accuracy();
-         SERIAL_ECHOPAIR("Z-Probe accuracy: ", probe_accuracy);
+         probe_error = z_probe_accuracy();
+         SERIAL_ECHO("Z-Probe error: ");
+         SERIAL_PROTOCOL_F(probe_error, 3);
          SERIAL_ECHO(" mm ");
        
-         if (probe_accuracy < 0.03) 
+         if (probe_error < 0.03) 
            {
            SERIAL_ECHOLN("(OK)");
            }
@@ -1604,7 +1623,7 @@ void process_commands()
            feedmultiply = saved_feedmultiply;
            break;
            }
-
+          */
          if (code_seen('D'))
             {
             //Fix diagonal rod at specified length (do not adjust)
