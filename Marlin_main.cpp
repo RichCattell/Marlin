@@ -984,9 +984,9 @@ float z_probe() {
 
 void calibrate_print_surface(float z_offset) {
   //Zero the array
-  for (int y = 0; y >=6; y++)
+  for (int y = 0; y < 7; y++)
     {
-      for (int x = 0; x >=6; y++)
+      for (int x = 0; x < 7; y++)
         {
           bed_level[x][y] = 0.0;
         }
@@ -1042,15 +1042,20 @@ float probe_bed(float x, float y)
     if (probe_z > probe_h) probe_h = probe_z;
     if (probe_z < probe_l) probe_l = probe_z;
     probe_count ++;
-    } while (probe_z != probe_bed_z);
+    } while ((probe_z != probe_bed_z) and (probe_count < 11));
     
   if (probe_count > 2)
     {
     SERIAL_ECHO("Z-Probe error: ");
-    SERIAL_PROTOCOL_F(probe_h - probe_l, 4);
+    SERIAL_PROTOCOL_F(probe_h - probe_l, 3);
     SERIAL_ECHO("mm in ");
     SERIAL_ECHO(probe_count);
     SERIAL_ECHO(" probes");
+    if (probe_count == 10)
+      {
+      SERIAL_ECHO(" (unable to get 2x consistant probes!)");
+      }
+    SERIAL_ECHOLN("");
     }
   /*
   SERIAL_ECHO("Bed Z-Height at X:");
@@ -1453,7 +1458,7 @@ void process_commands()
         {
         SERIAL_ECHOLN("Current bed level array values:");
         SERIAL_ECHOLN("");
-        for (int y = 6; y >= 0; y--)
+        for (int y = 0; y < 7; y++)
           {
           for (int x = 0; x < 7; x++)
             {
@@ -1599,7 +1604,6 @@ void process_commands()
             break;
             }
 
-
         /*
          //Probe all bed locations and check probe accuracy      
          probe_error = z_probe_accuracy();
@@ -1624,6 +1628,7 @@ void process_commands()
            break;
            }
           */
+          
          if (code_seen('D'))
             {
             //Fix diagonal rod at specified length (do not adjust)
@@ -1654,24 +1659,23 @@ void process_commands()
                 endstop_adj[1] += bed_level_y;
                 endstop_adj[2] += bed_level_z; 
                 
-                //Check that no endstop adj values are > 0 (not allowed).. if they are, move other endstops down instead.
-                if (endstop_adj[0] > 0) 
-                  {
-                  endstop_adj[1] -= endstop_adj[0];
-                  endstop_adj[2] -= endstop_adj[0];
-                  endstop_adj[0] = 0;
+                //Check that no endstop adj values are > 0 (not allowed).. if they are, reduce the build height to compensate.
+                h_endstop = 0;
+                for(int x=0; x < 3; x++)
+                  { 
+                  if (endstop_adj[x] > h_endstop) h_endstop = endstop_adj[x]; 
                   }
-                if (endstop_adj[1] > 0) 
+                if (h_endstop > 0) 
                   {
-                  endstop_adj[0] -= endstop_adj[1];
-                  endstop_adj[2] -= endstop_adj[1];
-                  endstop_adj[1] = 0;
-                  }
-                if (endstop_adj[2] > 0) 
-                  {
-                  endstop_adj[0] -= endstop_adj[2];
-                  endstop_adj[1] -= endstop_adj[2];
-                  endstop_adj[2] = 0;
+                  //Reduce build height and adjust endstops
+                  for(int x=0; x < 3; x++)
+                    {
+                    endstop_adj[x] -= h_endstop + 2;
+                    }
+                  max_pos[Z_AXIS] -= h_endstop + 2;
+                  set_delta_constants();
+                  SERIAL_ECHOPAIR("Adjusting Z-Height to: ", max_pos[Z_AXIS]);
+                  SERIAL_ECHOLN(" mm..");                
                   }
                 }
                 else 
