@@ -1035,15 +1035,19 @@ float probe_bed(float x, float y)
 
   probe_count = 0;
   probe_z = -100;
-  probe_h = probe_l = 0.0;
+  probe_h = -100;
+  probe_l = 100;
   do {
     probe_bed_z = probe_z;
     probe_z = z_probe() + z_probe_offset[Z_AXIS];
     if (probe_z > probe_h) probe_h = probe_z;
     if (probe_z < probe_l) probe_l = probe_z;
     probe_count ++;
+    SERIAL_PROTOCOL_F(probe_z,3);
+    SERIAL_ECHO(" ");
+    //if (probe_z != probe_bed_z) delay(500);
     } while ((probe_z != probe_bed_z) and (probe_count < 11));
-    
+    SERIAL_ECHOLN("");
   if (probe_count > 2)
     {
     SERIAL_ECHO("Z-Probe error: ");
@@ -1573,7 +1577,7 @@ void process_commands()
          float adj_prev_mul;
          boolean adj_r_done, adj_dr_done;
          boolean adj_dr_allowed = true;
-         float h_endstop = 0, l_endstop = 0;
+         float h_endstop = -100, l_endstop = 100;
          float probe_error;
          
          //Check that endstops are within limits
