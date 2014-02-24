@@ -178,7 +178,7 @@ float current_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
 float add_homeing[3]={0,0,0};
 #ifdef DELTA
   float endstop_adj[3]={0,0,0};
-  float tower_adj[3]={0,0,0};
+  float tower_adj[6]={0,0,0,0,0,0};
   float delta_radius; // = DEFAULT_delta_radius;
   float delta_diagonal_rod; // = DEFAULT_DELTA_DIAGONAL_ROD;
   float DELTA_DIAGONAL_ROD_2;
@@ -888,12 +888,21 @@ void set_delta_constants()
   DELTA_DIAGONAL_ROD_2 = pow(delta_diagonal_rod,2);
   
   // Effective X/Y positions of the three vertical towers.
+  /*
   delta_tower1_x = (-SIN_60 * delta_radius) + tower_adj[0]; // front left tower + xa
   delta_tower1_y = (-COS_60 * delta_radius) - tower_adj[0] ;
   delta_tower2_x = -(-SIN_60 * delta_radius) + tower_adj[1]; // front right tower + xb
   delta_tower2_y = (-COS_60 * delta_radius) + tower_adj[1]; // 
   delta_tower3_x = tower_adj[2] ; // back middle tower + xc
   delta_tower3_y = -2 * (-COS_60 * delta_radius);  
+  */
+  
+  delta_tower1_x = (delta_radius + tower_adj[3]) * cos((210 + tower_adj[0]) * PI/180); // front left tower
+  delta_tower1_y = (delta_radius + tower_adj[3]) * sin((210 + tower_adj[0]) * PI/180); 
+  delta_tower2_x = (delta_radius + tower_adj[4]) * cos((330 + tower_adj[1]) * PI/180); // front right tower
+  delta_tower2_y = (delta_radius + tower_adj[4]) * sin((330 + tower_adj[1]) * PI/180); 
+  delta_tower3_x = (delta_radius + tower_adj[5]) * cos((90 + tower_adj[2]) * PI/180);  // back middle tower
+  delta_tower3_y = (delta_radius + tower_adj[5]) * sin((90 + tower_adj[2]) * PI/180); 
 }
 
 void deploy_z_probe() {
@@ -982,16 +991,19 @@ float z_probe() {
   return mm;
 }
 
-void calibrate_print_surface(float z_offset) {
+void calibrate_print_surface(float z_offset)
+{
   //Zero the array
   for (int y = 0; y < 7; y++)
     {
-      for (int x = 0; x < 7; y++)
+      for (int x = 0; x < 7; x++)
         {
           bed_level[x][y] = 0.0;
         }
     }
-  for (int y = -3; y <= 3; y++) {
+    
+    SERIAL_ECHOLN("Array cleared");
+    for (int y = -3; y <= 3; y++) {
     int dir = y % 2 ? -1 : 1;
     for (int x = -3*dir; x != 4*dir; x += dir) {
       if (x*x + y*y < 11) {
@@ -1043,11 +1055,11 @@ float probe_bed(float x, float y)
     if (probe_z > probe_h) probe_h = probe_z;
     if (probe_z < probe_l) probe_l = probe_z;
     probe_count ++;
-    SERIAL_PROTOCOL_F(probe_z,3);
-    SERIAL_ECHO(" ");
-    //if (probe_z != probe_bed_z) delay(500);
-    } while ((probe_z != probe_bed_z) and (probe_count < 11));
-    SERIAL_ECHOLN("");
+    //SERIAL_PROTOCOL_F(probe_z,3);
+    //SERIAL_ECHO(" ");
+    } while ((probe_z != probe_bed_z) and (probe_count < 21));
+    //SERIAL_ECHOLN("");
+  /*
   if (probe_count > 2)
     {
     SERIAL_ECHO("Z-Probe error: ");
@@ -1055,12 +1067,13 @@ float probe_bed(float x, float y)
     SERIAL_ECHO("mm in ");
     SERIAL_ECHO(probe_count);
     SERIAL_ECHO(" probes");
-    if (probe_count == 10)
+    if (probe_count == 20)
       {
       SERIAL_ECHO(" (unable to get 2x consistant probes!)");
       }
     SERIAL_ECHOLN("");
     }
+    */
   /*
   SERIAL_ECHO("Bed Z-Height at X:");
   SERIAL_ECHO(x);
@@ -1136,37 +1149,35 @@ void bed_probe_all()
   
 void calibration_report()
   {
-  //probe all bed positions
-  bed_probe_all();
   
   //Display Report
-  SERIAL_ECHOLN(";\tZ-Tower");
+  SERIAL_ECHOLN("\tZ-Tower\t\t\tEndstop Offsets");
 
-  SERIAL_PROTOCOLPGM(";\t");
+  SERIAL_ECHO("\t");
   SERIAL_PROTOCOL_F(bed_level_z, 4);
-  SERIAL_ECHOLN("\t\t\tEndstop Offsets");
-
-  SERIAL_PROTOCOLPGM(";");
-  SERIAL_PROTOCOL_F(bed_level_oy, 4);
-  SERIAL_PROTOCOLPGM("\t\t");
-  SERIAL_PROTOCOL_F(bed_level_ox, 4);
-  SERIAL_ECHOPAIR("\t\tX:",endstop_adj[0]);
+  SERIAL_ECHOPAIR("\t\t\tX:",endstop_adj[0]);
   SERIAL_ECHOPAIR(" Y:",endstop_adj[1]);
   SERIAL_ECHOPAIR(" Z:",endstop_adj[2]);
   SERIAL_ECHOLN("");
 
-  SERIAL_PROTOCOLPGM(";\t");
+  SERIAL_PROTOCOL_F(bed_level_oy, 4);
+  SERIAL_PROTOCOLPGM("\t\t");
+  SERIAL_PROTOCOL_F(bed_level_ox, 4);
+  SERIAL_ECHOLN("\t\tTower Position Adjust");
+
+  SERIAL_PROTOCOLPGM("\t");
   SERIAL_PROTOCOL_F(bed_level_c, 4);
-  SERIAL_ECHOLN("\t\t\tTower Position Adjust");
+  SERIAL_ECHOPAIR("\t\t\tA:",tower_adj[0]);
+  SERIAL_ECHOPAIR(" B:",tower_adj[1]);
+  SERIAL_ECHOPAIR(" C:",tower_adj[2]);
   SERIAL_ECHOLN("");
 
-  SERIAL_PROTOCOLPGM(";");      
   SERIAL_PROTOCOL_F(bed_level_x, 4);
   SERIAL_PROTOCOLPGM("\t\t");
   SERIAL_PROTOCOL_F(bed_level_y, 4);
-  SERIAL_ECHOPAIR("\t\tA:",tower_adj[0]);
-  SERIAL_ECHOPAIR(" B:",tower_adj[1]);
-  SERIAL_ECHOPAIR(" C:",tower_adj[2]);
+  SERIAL_ECHOPAIR("\t\tE:",tower_adj[3]);
+  SERIAL_ECHOPAIR(" F:",tower_adj[4]);
+  SERIAL_ECHOPAIR(" G:",tower_adj[5]);
   SERIAL_ECHOLN("");
 
   SERIAL_PROTOCOLPGM(";\t");
@@ -1560,6 +1571,9 @@ void process_commands()
        home_delta_axis();
        deploy_z_probe(); 
       
+       //Probe all points
+       bed_probe_all();
+      
        //Show calibration report      
        calibration_report();
   
@@ -1569,16 +1583,20 @@ void process_commands()
          int loopcount = 1;
          float adj_r_target, adj_dr_target;
          float adj_r_target_delta = 0, adj_dr_target_delta = 0;
+         float adj_AlphaA_delta = 0;
          float saved_bed_level_c, saved_adj_r_target, saved_adj_dr_target;
          float saved_delta_diagonal_rod = delta_diagonal_rod;
-         float adj_xa, adj_ya, adj_xc;
+         float saved_adj_AlphaA_delta;
+         float adj_AlphaA, adj_AlphaB, adj_AlphaC;
+         float adj_RadiusA, adj_RadiusB, adj_RadiusC;
          float adj_r = 0, adj_dr = 0;
          float adj_r_mul = 1, adj_dr_mul = 1;
+         float adj_AlphaA_mul;
          float adj_prev_mul;
          boolean adj_r_done, adj_dr_done;
          boolean adj_dr_allowed = true;
          float h_endstop = -100, l_endstop = 100;
-         float probe_error;
+         float probe_error, ftemp;
          
          //Check that endstops are within limits
          if (bed_level_x + endstop_adj[0] > h_endstop) h_endstop = bed_level_x + endstop_adj[0];
@@ -1588,10 +1606,10 @@ void process_commands()
          if (bed_level_z + endstop_adj[2] > h_endstop) h_endstop = bed_level_z + endstop_adj[2];
          if (bed_level_z + endstop_adj[2] < l_endstop) l_endstop = bed_level_x + endstop_adj[2];
 
-         if (h_endstop - l_endstop > 2)
+         if (h_endstop - l_endstop > 3)
             {
             SERIAL_ECHOLN("The position of the endstop switches on this printer are not within limits");
-            SERIAL_ECHOLN("Adjust endstop switches so that they are within 2mm Z-height of each other");
+            SERIAL_ECHOLN("Adjust endstop switches so that they are within 3mm Z-height of each other");
             SERIAL_ECHOLN("");
             SERIAL_ECHOPAIR("Current Endstop Positions - X: ", bed_level_x + endstop_adj[0]); 
             SERIAL_ECHOPAIR(" Y: ", bed_level_y + endstop_adj[1]);
@@ -1659,9 +1677,9 @@ void process_commands()
                 {  
                 //Endstops req adjustment
                 SERIAL_ECHOLN("Adjusting Endstops..");
-                endstop_adj[0] += bed_level_x;
-                endstop_adj[1] += bed_level_y;
-                endstop_adj[2] += bed_level_z; 
+                endstop_adj[0] += bed_level_x/1.05;
+                endstop_adj[1] += bed_level_y/1.05;
+                endstop_adj[2] += bed_level_z/1.05; 
                 
                 //Check that no endstop adj values are > 0 (not allowed).. if they are, reduce the build height to compensate.
                 h_endstop = 0;
@@ -1688,18 +1706,12 @@ void process_commands()
                  
                 adj_r_target = (bed_level_x + bed_level_y + bed_level_z) / 3;
                 adj_dr_target = (bed_level_ox + bed_level_oy + bed_level_oz) / 3;
-                //tower A position adjust
-                adj_xa = bed_level_oz - bed_level_oy;
-                //tower y position adjust
-                adj_ya = bed_level_ox - bed_level_oz;
-                //tower z position adjust
-                adj_xc = bed_level_ox - bed_level_oy;
-
+                
                 //Determine which parameters require adjustment
                 if (bed_level_c == adj_r_target) adj_r_done = true; else adj_r_done = false;
                 if (adj_dr_target == adj_r_target) adj_dr_done = true; else adj_dr_done = false;
                             
-                if ((adj_r_done == false) or (adj_dr_done == false) or (adj_xa != 0) or (adj_ya != 0) or (adj_xc != 0))
+                if ((adj_r_done == false) or (adj_dr_done == false) or (adj_AlphaA != 0) or (adj_AlphaB != 0) or (adj_AlphaC != 0))
                   {
                   //delta geometry adjustment required                     
                   SERIAL_ECHOLN("Adjusting Delta Geometry..");
@@ -1717,37 +1729,88 @@ void process_commands()
                     adj_dr_mul = 1;
                     }
                   
+                  //Don't adjust tower positions on first iteration
+                  adj_AlphaA = adj_AlphaB = adj_AlphaC = 0; 
+                  adj_RadiusA = adj_RadiusB = adj_RadiusC = 0;
+                  
                   do {   
                      saved_bed_level_c = bed_level_c;
                      saved_adj_r_target = adj_r_target;
                      saved_adj_dr_target = adj_dr_target;
+                     saved_adj_AlphaA_delta = bed_level_oz - bed_level_oy;
                      
                      //Apply adjustments 
                      if (adj_r_done == false) delta_radius += adj_r * adj_r_mul;
                      if ((adj_dr_allowed == true) and (adj_dr_done == false)) delta_diagonal_rod += adj_dr * adj_dr_mul;
-                     tower_adj[0] += adj_xa;
-                     tower_adj[1] += adj_ya;
-	             tower_adj[2] += adj_xc;
+                     tower_adj[0] -= adj_AlphaA; // * adj_AlphaA_mul;
+                     tower_adj[1] -= adj_AlphaB;
+	             tower_adj[2] -= adj_AlphaC;
+                     tower_adj[3] += adj_RadiusA;
+                     tower_adj[4] += adj_RadiusB;
+                     tower_adj[5] += adj_RadiusC;
+                     
+                     //Reduce all radius errors by smallest radius error
+                     ftemp = tower_adj[3];
+                     if (tower_adj[4] < ftemp) ftemp = tower_adj[4];
+                     if (tower_adj[5] < ftemp) ftemp = tower_adj[5];
+                     tower_adj[3] -= ftemp;
+                     tower_adj[4] -= ftemp;
+                     tower_adj[5] -= ftemp;
+                     
                      set_delta_constants();              
                           
-                     bed_level_c = probe_bed(0.0,0.0);
-                     bed_level_z = probe_bed(0.0, bed_radius);
-                     bed_level_oy = probe_bed(-SIN_60 * bed_radius, COS_60 * bed_radius);
-                     bed_level_x = probe_bed(-SIN_60 * bed_radius, -COS_60 * bed_radius);
-                     bed_level_oz = probe_bed(0.0, -bed_radius);
-                     bed_level_y = probe_bed(SIN_60 * bed_radius, -COS_60 * bed_radius);
-                     bed_level_ox = probe_bed(SIN_60 * bed_radius, COS_60 * bed_radius);
-                                                  
+                     bed_probe_all();
+                     calibration_report();
+                     
+                     //set delta radius and diag rod targets
                      adj_r_target = (bed_level_x + bed_level_y + bed_level_z) / 3;
                      adj_dr_target = (bed_level_ox + bed_level_oy + bed_level_oz) / 3;
-                     //tower x position adjust
-                     adj_xa = bed_level_oz - bed_level_oy;
-                     //tower y position adjust
-                     adj_ya = bed_level_ox - bed_level_oz;
-                     //tower z position adjust
-                     adj_xc = bed_level_ox - bed_level_oy;
-     
-     
+                                
+                     //tower radius errors
+                     adj_RadiusA = bed_level_x - bed_level_ox;
+                     adj_RadiusB = bed_level_y - bed_level_oy; 
+                     adj_RadiusC = bed_level_z - bed_level_oz;      
+                     
+                     SERIAL_ECHOPAIR("RadiusA Error: ",adj_RadiusA);
+                     SERIAL_ECHOLN("");
+                     SERIAL_ECHOPAIR("RadiusB Error: ",adj_RadiusB);
+                     SERIAL_ECHOLN("");
+                     SERIAL_ECHOPAIR("RadiusC Error: ",adj_RadiusC);
+                     SERIAL_ECHOLN("");
+                     
+                     adj_AlphaA = bed_level_oy - bed_level_oz;
+                     adj_AlphaB = bed_level_oz - bed_level_ox;
+                     adj_AlphaC = bed_level_ox - bed_level_oy;
+                     
+                     SERIAL_ECHOPAIR("DeltaAlphaA: ",adj_AlphaA);
+                     SERIAL_ECHOLN("");
+                     SERIAL_ECHOPAIR("DeltaAlphaB: ",adj_AlphaB);
+                     SERIAL_ECHOLN("");
+                     SERIAL_ECHOPAIR("DeltaAlphaC: ",adj_AlphaC);
+                     SERIAL_ECHOLN("");
+                                       
+                     /*
+                     //tower A position adjust
+                     adj_AlphaA = 0;
+                     if (bed_level_oy != bed_level_oz)
+                      {
+                      if (bed_level_oy < bed_level_oz) adj_AlphaA = 0.05; else adj_AlphaA = -0.05;
+                      }
+                     
+                     //tower B position adjust
+                     adj_AlphaB = 0;
+                     if (bed_level_oz != bed_level_ox)
+                      {
+                      if (bed_level_oz < bed_level_ox) adj_AlphaB = 0.05; else adj_AlphaB = -0.05;
+                      } 
+                      
+                     //tower C position adjust
+                     adj_AlphaC = 0;
+                     if (bed_level_ox != bed_level_oy)
+                      {
+                      if (bed_level_ox < bed_level_oy) adj_AlphaC = 0.05; else adj_AlphaC = -0.05;
+                      }
+                     */            
                      //Modify multipliers based on previous adjustments
                      if (saved_adj_r_target != 0)
                        {
@@ -1776,8 +1839,7 @@ void process_commands()
                        */
                        if (adj_dr_mul > 8) adj_dr_mul = 8;
                        }
-                     
-                       
+                                    
                      if (((adj_r > 0) and (bed_level_c > adj_r_target)) or ((adj_r < 0) and (bed_level_c < adj_r_target)))
                        {
                        //overshot target .. reverse
@@ -1817,11 +1879,11 @@ void process_commands()
                      if (adj_dr_done == true) SERIAL_ECHO("Yes"); else SERIAL_ECHO("No");
                      SERIAL_ECHOLN("");
                      */
-                     if ((adj_xa != 0) or (adj_ya !=0) or (adj_xc != 0)) 
+                     if ((adj_AlphaA != 0) or (adj_AlphaB !=0) or (adj_AlphaC != 0)) 
                        {
-                       SERIAL_ECHOPAIR("Adjusting tower positions: X(", adj_xa); 
-                       SERIAL_ECHOPAIR(") Y(", adj_ya);
-                       SERIAL_ECHOPAIR(") Z(", adj_xc);
+                       SERIAL_ECHOPAIR("Adjusting tower positions: A(", adj_AlphaA * adj_AlphaA_mul); 
+                       SERIAL_ECHOPAIR(") B(", adj_AlphaB);
+                       SERIAL_ECHOPAIR(") C(", adj_AlphaC);
                        SERIAL_ECHOLN(")");
                        }
                      if (adj_r_done == false)
@@ -1836,7 +1898,7 @@ void process_commands()
                        SERIAL_ECHOLN(")");
                        }
                     
-                   } while((adj_r_done == false) or (adj_dr_done = false));//  or (adj_ya != 0) or (adj_xc != 0));
+                   } while((adj_r_done == false) or (adj_dr_done = false));
                    }
                    else
                    {
@@ -1848,6 +1910,7 @@ void process_commands()
                 home_delta_axis();
                 
                 //probe bed and display report
+                bed_probe_all();
 		calibration_report();
 
 		loopcount ++;
@@ -2524,20 +2587,32 @@ void process_commands()
 		tower_adj[2] = code_value();
 		set_delta_constants();
 	   }
-         if(code_seen('R')) {
+           if(code_seen('E')) {
+		tower_adj[3] = code_value();
+		set_delta_constants();
+	   }
+	   if(code_seen('F')) {
+		tower_adj[4] = code_value();
+		set_delta_constants();
+	   }
+	   if(code_seen('G')) {
+		tower_adj[5] = code_value();
+		set_delta_constants();
+	   }
+           if(code_seen('R')) {
            delta_radius = code_value();
            set_delta_constants();
          }
-         if(code_seen('D')) {
-           delta_diagonal_rod = code_value();
-           set_delta_constants();
+           if(code_seen('D')) {
+             delta_diagonal_rod = code_value();
+             set_delta_constants();
          }
-         if(code_seen('H')) {
-           max_pos[Z_AXIS]= code_value();
+           if(code_seen('H')) {
+             max_pos[Z_AXIS]= code_value();
 	     set_delta_constants();
          }
 	   if(code_seen('P')) {
-            z_probe_offset[Z_AXIS]= code_value();
+             z_probe_offset[Z_AXIS]= code_value();
 	   }
 	   if(code_seen('L')) {
 	     SERIAL_ECHOLN("Current Delta geometry values:");
@@ -2551,17 +2626,23 @@ void process_commands()
              SERIAL_ECHOPAIR(" Y", z_probe_offset[1]);
              SERIAL_ECHOPAIR(" Z", z_probe_offset[2]);
              SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("A Tower Adj(xa): ",tower_adj[0]);
+             SERIAL_ECHOPAIR("A (Tower A Position Correction): ",tower_adj[0]);
              SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("B Tower Adj(ya): ",tower_adj[1]);
+             SERIAL_ECHOPAIR("B (Tower B Position Correction): ",tower_adj[1]);
              SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("C Tower Adj(xc): ",tower_adj[2]);
+             SERIAL_ECHOPAIR("C (Tower C Position Correction): ",tower_adj[2]);
 	     SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("R(delta radius): ",delta_radius);
+             SERIAL_ECHOPAIR("E (Tower A Radius Correction): ",tower_adj[3]);
              SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("D(diagonal rod): ",delta_diagonal_rod);
+             SERIAL_ECHOPAIR("F (Tower B Radius Correction): ",tower_adj[4]);
+             SERIAL_ECHOLN("");
+             SERIAL_ECHOPAIR("G (Tower C Radius Correction): ",tower_adj[5]);
 	     SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("H    (Z-Height): ",max_pos[Z_AXIS]);
+             SERIAL_ECHOPAIR("R (Delta Radius): ",delta_radius);
+             SERIAL_ECHOLN("");
+             SERIAL_ECHOPAIR("D (Diagonal Rod Length): ",delta_diagonal_rod);
+	     SERIAL_ECHOLN("");
+             SERIAL_ECHOPAIR("H (Z-Height): ",max_pos[Z_AXIS]);
              SERIAL_ECHOLN("");
              }
          break;

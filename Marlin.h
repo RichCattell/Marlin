@@ -208,7 +208,7 @@ extern float add_homeing[3];
 #ifdef DELTA
   extern float z_probe_offset[3];
   extern float endstop_adj[3];
-  extern float tower_adj[3];
+  extern float tower_adj[6];
   extern float delta_radius;
   extern float delta_diagonal_rod;
   //*extern float Z_MAX_POS;

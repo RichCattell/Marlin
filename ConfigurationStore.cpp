@@ -37,7 +37,7 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 // the default values are used whenever there is a change to the data, to prevent
 // wrong data being written to the variables.
 // ALSO:  always make sure the variables in the Store and retrieve sections are in the same order.
-#define EEPROM_VERSION "V13"
+#define EEPROM_VERSION "V14"
 
 #ifdef EEPROM_SETTINGS
 void Config_StoreSettings() 
@@ -164,9 +164,12 @@ void Config_PrintSettings()
       SERIAL_ECHO_START;
       SERIAL_ECHOLNPGM("Delta Geometry adjustment:");
       SERIAL_ECHO_START;
-      SERIAL_ECHOPAIR("  M666 A(xa)",tower_adj[0]);
-      SERIAL_ECHOPAIR(" B(ya)" ,tower_adj[1]);
-      SERIAL_ECHOPAIR(" C(xc)" ,tower_adj[2]);
+      SERIAL_ECHOPAIR("  M666 A",tower_adj[0]);
+      SERIAL_ECHOPAIR(" B" ,tower_adj[1]);
+      SERIAL_ECHOPAIR(" C" ,tower_adj[2]);
+      SERIAL_ECHOPAIR(" E" ,tower_adj[3]);
+      SERIAL_ECHOPAIR(" F" ,tower_adj[4]);
+      SERIAL_ECHOPAIR(" G" ,tower_adj[5]);
       SERIAL_ECHOPAIR(" R" ,delta_radius);
       SERIAL_ECHOPAIR(" D" ,delta_diagonal_rod);
       SERIAL_ECHOPAIR(" H" ,max_pos[2]);
@@ -298,7 +301,7 @@ void Config_ResetDefault()
       delta_radius = DEFAULT_DELTA_RADIUS;
       delta_diagonal_rod = DEFAULT_DELTA_DIAGONAL_ROD;
       endstop_adj[0] = endstop_adj[1] = endstop_adj[2] = 0;
-      tower_adj[0] = tower_adj[1] = tower_adj[2] = 0;
+      tower_adj[0] = tower_adj[1] = tower_adj[2] = tower_adj[3] = tower_adj[4] = tower_adj[5] = 0;
       max_pos[2] = MANUAL_Z_HOME_POS;
       set_default_z_probe_offset();
       set_delta_constants();
