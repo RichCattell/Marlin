@@ -98,7 +98,7 @@
 #define DEFAULT_DELTA_RADIUS (DELTA_SMOOTH_ROD_OFFSET-DELTA_EFFECTOR_OFFSET-DELTA_CARRIAGE_OFFSET)
 
 // Precision for G30 delta autocalibration function
-#define AUTOCALIBRATION_PRECISION 0.05 // mm
+#define AUTOCALIBRATION_PRECISION 0.03 // mm
 
 // Diameter of print bed (printable area)
 #define BED_DIAMETER 160 // mm
