@@ -1680,9 +1680,9 @@ void process_commands()
                 {  
                 //Endstops req adjustment
                 SERIAL_ECHOLN("Adjusting Endstops..");
-                endstop_adj[0] += bed_level_x/1.1;
-                endstop_adj[1] += bed_level_y/1.1;
-                endstop_adj[2] += bed_level_z/1.1; 
+                endstop_adj[0] += bed_level_x / 1.3;
+                endstop_adj[1] += bed_level_y / 1.3;
+                endstop_adj[2] += bed_level_z / 1.3; 
                 
                 //Check that no endstop adj values are > 0 (not allowed).. if they are, reduce the build height to compensate.
                 h_endstop = 0;
@@ -1711,10 +1711,10 @@ void process_commands()
                 adj_dr_target = (bed_level_ox + bed_level_oy + bed_level_oz) / 3;
                 
                 //Determine which parameters require adjustment
-                if (bed_level_c == adj_r_target) adj_r_done = true; else adj_r_done = false;
-                if (adj_dr_target == adj_r_target) adj_dr_done = true; else adj_dr_done = false;
+                if ((bed_level_c >= adj_r_target - ac_prec) and (bed_level_c <= adj_r_target + ac_prec)) adj_r_done = true; else adj_r_done = false;
+                if ((adj_dr_target >= adj_r_target - ac_prec) and (adj_dr_target <= adj_r_target + ac_prec)) adj_dr_done = true; else adj_dr_done = false;
                             
-                if ((adj_r_done == false) or (adj_dr_done == false)) // or (adj_AlphaA != 0) or (adj_AlphaB != 0) or (adj_AlphaC != 0))
+                if ((adj_r_done == false) or (adj_dr_done == false)) 
                   {
                   //delta geometry adjustment required                     
                   SERIAL_ECHOLN("Adjusting Delta Geometry..");
@@ -1722,14 +1722,12 @@ void process_commands()
                   //set inital direction and magnitude for delta radius & diagonal rod adjustment
                   if (adj_r == 0)
                     {
-                    if (adj_r_target > bed_level_c) adj_r = 0.1; else adj_r = -0.1;
-                    adj_r_mul = 1;   
+                    if (adj_r_target > bed_level_c) adj_r = 1; else adj_r = -1;
                     }
                   
                   if (adj_dr == 0)
                     {
-                    if (adj_r_target > adj_dr_target) adj_dr = 0.1; else adj_dr = -0.1;
-                    adj_dr_mul = 1;
+                    if (adj_r_target > adj_dr_target) adj_dr = 1; else adj_dr = -1;
                     }
                   
                   //Don't adjust tower positions on first iteration
@@ -1737,21 +1735,21 @@ void process_commands()
                   adj_RadiusA = adj_RadiusB = adj_RadiusC = 0;
                   
                   do {   
-                     saved_bed_level_c = bed_level_c;
-                     saved_adj_r_target = adj_r_target;
-                     saved_adj_dr_target = adj_dr_target;
-                     saved_adj_AlphaA_delta = bed_level_oz - bed_level_oy;
+                     //saved_bed_level_c = bed_level_c;
+                     //saved_adj_r_target = adj_r_target;
+                     //saved_adj_dr_target = adj_dr_target;
+                     //saved_adj_AlphaA_delta = bed_level_oz - bed_level_oy;
                      
                      //Apply adjustments 
                      if (adj_r_done == false) 
                        {
-                       delta_radius += adj_r * adj_r_mul;
+                       delta_radius += adj_r; // * adj_r_mul;
                        SERIAL_ECHOPAIR("Adjusting Delta Radius (",delta_radius);
                        SERIAL_ECHOLN(")");
                        }
-                     if ((adj_dr_allowed == true) and (adj_dr_done == false) and (adj_r_done == true)) 
+                     if ((adj_dr_allowed == true) and (adj_dr_done == false)) // and (adj_r_done == true)) 
                        {
-                       delta_diagonal_rod += adj_dr * adj_dr_mul;
+                       delta_diagonal_rod += adj_dr; // * adj_dr_mul;
                        SERIAL_ECHOPAIR("Adjusting Diag Rod Length (",delta_diagonal_rod);
                        SERIAL_ECHOLN(")");
                        }
@@ -1762,6 +1760,7 @@ void process_commands()
                      tower_adj[4] += adj_RadiusB;
                      tower_adj[5] += adj_RadiusC;
                      
+                     /*
                      //Reduce all radius errors by smallest radius error
                      ftemp = tower_adj[3];
                      if (tower_adj[4] < ftemp) ftemp = tower_adj[4];
@@ -1769,6 +1768,7 @@ void process_commands()
                      tower_adj[3] -= ftemp;
                      tower_adj[4] -= ftemp;
                      tower_adj[5] -= ftemp;
+                     */
                      
                      set_delta_constants();              
                           
@@ -1778,11 +1778,6 @@ void process_commands()
                      //set delta radius and diag rod targets
                      adj_r_target = (bed_level_x + bed_level_y + bed_level_z) / 3;
                      adj_dr_target = (bed_level_ox + bed_level_oy + bed_level_oz) / 3;
-                                
-                     //tower radius errors
-                     //adj_RadiusA = bed_level_x - bed_level_ox;
-                     //adj_RadiusB = bed_level_y - bed_level_oy; 
-                     //adj_RadiusC = bed_level_z - bed_level_oz;      
                      
                      SERIAL_ECHOPAIR("RadiusA Error: ",adj_RadiusA);
                      SERIAL_ECHOLN("");
@@ -1824,52 +1819,35 @@ void process_commands()
                       if (bed_level_ox < bed_level_oy) adj_AlphaC = 0.05; else adj_AlphaC = -0.05;
                       }
                      */            
-                     //Modify multipliers based on previous adjustments
-                     if (saved_adj_r_target != 0)
-                       {
-                       adj_prev_mul = abs((saved_bed_level_c - saved_adj_r_target) / (adj_r_mul*adj_r));  
-                       adj_r_target_delta = abs(bed_level_c - adj_r_target);
-                       adj_r_mul = adj_r_target_delta * adj_prev_mul;
-                       /*
-                       SERIAL_ECHOPAIR("adj_r = ", adj_r);
-                       SERIAL_ECHOPAIR("adj_prev_mul = ", adj_prev_mul);
-                       SERIAL_ECHOPAIR("adj_r_target_delta = ", adj_r_target_delta);
-                       SERIAL_ECHOPAIR("adj_r_mul = ", adj_r_mul);
-                       */
-                       //if (adj_r_mul > 8) adj_r_mul = 8;  
-                     }
-                     
-                     if (saved_adj_dr_target != 0)
-                       {
-                       adj_prev_mul = abs((saved_adj_r_target - saved_adj_dr_target) / (adj_dr_mul*adj_dr));  
-                       adj_dr_target_delta = abs(adj_r_target - adj_dr_target);
-                       adj_dr_mul = adj_dr_target_delta * adj_prev_mul;
-                       /*
-                       SERIAL_ECHOPAIR("adj_dr = ", adj_dr);
-                       SERIAL_ECHOPAIR("adj_prev_mul = ", adj_prev_mul);
-                       SERIAL_ECHOPAIR("adj_dr_target_delta = ", adj_dr_target_delta);
-                       SERIAL_ECHOPAIR("adj_dr_mul = ", adj_dr_mul);
-                       */
-                       //if (adj_dr_mul > 8) adj_dr_mul = 8;
-                       }
-                                    
+                        
                      if (((adj_r > 0) and (bed_level_c > adj_r_target)) or ((adj_r < 0) and (bed_level_c < adj_r_target)))
                        {
-                       //overshot target .. reverse
-                       adj_r = -adj_r;
+                       //overshot target .. reverse & scale down
+                       adj_r = -(adj_r / 2);
                        }
                              
                      if (((adj_dr > 0) and (adj_dr_target > adj_r_target)) or ((adj_dr < 0) and (adj_dr_target < adj_r_target)))
                        {
-                       //overshot target .. reverse 
-                       adj_dr = -adj_dr;
+                       //overshot target .. reverse & scale down
+                       adj_dr = -(adj_dr / 2);
                        }
+                       
+                     //Tower radius adjustments complete?
+                     if (bed_level_x == bed_level_ox) adj_RadiusA = 0;
+                     if (bed_level_y == bed_level_oy) adj_RadiusB = 0;
+                     if (bed_level_z == bed_level_oz) adj_RadiusC = 0;
                      
-
-                     if ((bed_level_c >= adj_r_target - ac_prec) and (bed_level_c <= adj_r_target + ac_prec)) adj_r_done = true; else adj_r_done = false;
-                     if ((adj_dr_target >= adj_r_target - ac_prec) and (adj_dr_target <= adj_r_target + ac_prec)) adj_dr_done = true; else adj_dr_done = false;
- 
-                     /*
+                     //Tower radius overshot targets?
+                     if (((adj_RadiusA > 0) and (bed_level_x > bed_level_ox)) or ((adj_RadiusA < 0) and (bed_level_x < bed_level_ox))) adj_RadiusA = -(adj_RadiusA / 2);
+                     if (((adj_RadiusB > 0) and (bed_level_y > bed_level_oy)) or ((adj_RadiusB < 0) and (bed_level_y < bed_level_oy))) adj_RadiusB = -(adj_RadiusB / 2);
+                     if (((adj_RadiusC > 0) and (bed_level_z > bed_level_oz)) or ((adj_RadiusC < 0) and (bed_level_z < bed_level_oz))) adj_RadiusC = -(adj_RadiusC / 2);
+                     
+                     //Delta radius adjustment complete?                       
+                     if ((bed_level_c >= (adj_r_target - ac_prec)) and (bed_level_c <= (adj_r_target + ac_prec))) adj_r_done = true; else adj_r_done = false;
+                     
+                     //Diag Rod adjustment complete?
+                     if ((adj_dr_target >= (adj_r_target - ac_prec)) and (adj_dr_target <= (adj_r_target + ac_prec))) adj_dr_done = true; else adj_dr_done = false;
+                    
                      SERIAL_ECHOPAIR("c: ", bed_level_c);
                      SERIAL_ECHOPAIR(" x: ", bed_level_x);
                      SERIAL_ECHOPAIR(" y: ", bed_level_y);
@@ -1883,36 +1861,27 @@ void process_commands()
                      SERIAL_ECHO(" diagrod:");
                      SERIAL_PROTOCOL_F(delta_diagonal_rod, 4);
                      SERIAL_ECHOLN("");
-                     SERIAL_ECHOPAIR("xa adj:",adj_xa);
-                     SERIAL_ECHOPAIR("ya adj:",adj_ya);
-                     SERIAL_ECHOPAIR("xc adj:",adj_xc);
+                     //SERIAL_ECHOPAIR("xa adj:",adj_xa);
+                     //SERIAL_ECHOPAIR("ya adj:",adj_ya);
+                     //SERIAL_ECHOPAIR("xc adj:",adj_xc);
                      SERIAL_ECHO("Radius Adj Complete: ");
                      if (adj_r_done == true) SERIAL_ECHO("Yes"); else SERIAL_ECHO("No");
                      SERIAL_ECHO(" DiagRod Adj Complete: ");
                      if (adj_dr_done == true) SERIAL_ECHO("Yes"); else SERIAL_ECHO("No");
                      SERIAL_ECHOLN("");
-                     */
-                     if ((adj_AlphaA != 0) or (adj_AlphaB !=0) or (adj_AlphaC != 0)) 
+                     
+                     if ((adj_r_done == true) and (adj_dr_done == true) and (adj_RadiusA == 0) and (adj_RadiusB == 0) and (adj_RadiusC == 0))
                        {
-                       SERIAL_ECHOPAIR("Adjusting tower positions: A(", adj_AlphaA * adj_AlphaA_mul); 
-                       SERIAL_ECHOPAIR(") B(", adj_AlphaB);
-                       SERIAL_ECHOPAIR(") C(", adj_AlphaC);
-                       SERIAL_ECHOLN(")");
+                       //Check for tower alignment errors & set inital values to start adjustment
+                       if (bed_level_x > bed_level_ox) adj_RadiusA = 0.1;
+                       if (bed_level_x < bed_level_ox) adj_RadiusA = -0.1;
+                       if (bed_level_y > bed_level_oy) adj_RadiusB = 0.1;
+                       if (bed_level_y < bed_level_ox) adj_RadiusB = -0.1;
+                       if (bed_level_z > bed_level_oz) adj_RadiusC = 0.1;
+                       if (bed_level_z < bed_level_oz) adj_RadiusC = -0.1;
                        }
-                     /*
-                     if (adj_r_done == false)
-                       {
-                       SERIAL_ECHOPAIR("Adjusting Delta Radius (",delta_radius);
-                       SERIAL_ECHOLN(")");
-                       }
-                       
-                     if (adj_dr_done == false)
-                       {
-                       SERIAL_ECHOPAIR("Adjusting Diag Rod Length (",delta_diagonal_rod);
-                       SERIAL_ECHOLN(")");
-                       }
-                    */
-                   } while((adj_r_done == false) or (adj_dr_done = false));
+                    
+                   } while((adj_r_done == false) or (adj_dr_done = false) or (adj_RadiusA != 0) or (adj_RadiusB != 0) or (adj_RadiusC != 0));
                    }
                    else
                    {
