@@ -1002,13 +1002,13 @@ void calibrate_print_surface(float z_offset)
         }
     }
     
-    for (int y = -3; y <= 3; y++) {
+    for (int y = 3; y >= -3; y--) {
     int dir = y % 2 ? -1 : 1;
     for (int x = -3*dir; x != 4*dir; x += dir) {
       if (x*x + y*y < 11) {
 	destination[X_AXIS] = AUTOLEVEL_GRID * x - z_probe_offset[X_AXIS];
 	destination[Y_AXIS] = AUTOLEVEL_GRID * y - z_probe_offset[Y_AXIS];
-        prepare_move();
+        //prepare_move();
 	bed_level[x+3][y+3] = z_probe() + z_offset;
       } else {
 	bed_level[x+3][y+3] = 0.0;
@@ -1587,17 +1587,11 @@ void process_commands()
          int loopcount = 1;
          float adj_r_target, adj_dr_target;
          float adj_r_target_delta = 0, adj_dr_target_delta = 0;
-      //   float adj_AlphaA_delta = 0;
-//         float saved_bed_level_c, saved_adj_r_target, saved_adj_dr_target;
-  //       float saved_delta_diagonal_rod = delta_diagonal_rod;
-    //     float saved_adj_AlphaA_delta;
          float adj_AlphaA, adj_AlphaB, adj_AlphaC;
          float adj_RadiusA, adj_RadiusB, adj_RadiusC;
          float radiusErrorA, radiusErrorB,radiusErrorC;
          float adj_r = 0, adj_dr = 0;
-        // float adj_r_mul = 1, adj_dr_mul = 1;
-        // float adj_AlphaA_mul;
-        // float adj_prev_mul;
+         boolean equalAB, equalBC, equalCA;
          boolean adj_r_done, adj_dr_done, adj_tower_done;
          boolean adj_dr_allowed = true;
          float h_endstop = -100, l_endstop = 100;
@@ -1807,39 +1801,77 @@ void process_commands()
                      radiusErrorB = bed_level_y - bed_level_oy;
                      radiusErrorC = bed_level_z - bed_level_oz;
                      
-                     if ((radiusErrorA == radiusErrorB) and (radiusErrorB == radiusErrorC))
+                     if ((radiusErrorA >= (radiusErrorB - 0.02)) and (radiusErrorA <= (radiusErrorB + 0.02))) equalAB = true; else equalAB = false;
+                     if ((radiusErrorB >= (radiusErrorC - 0.02)) and (radiusErrorB <= (radiusErrorC + 0.02))) equalBC = true; else equalBC = false;
+                     if ((radiusErrorC >= (radiusErrorA - 0.02)) and (radiusErrorC <= (radiusErrorA + 0.02))) equalCA = true; else equalCA = false;
+                     
+                     if (equalAB == true)
                        {
-                       // all tower radius out by the same amount - allow adjustment with delta rod length
+                         SERIAL_ECHOPAIR("Tower AB Equal (A=",radiusErrorA);
+                         SERIAL_ECHOPAIR(" B=",radiusErrorB);
+                         SERIAL_ECHOLN(")");
+                       } else SERIAL_ECHOLN("equalAB=false");
+                       
+                     if (equalBC == true)
+                       { 
+                         SERIAL_ECHOPAIR("Tower BC Equal (B=",radiusErrorB);
+                         SERIAL_ECHOPAIR(" C=",radiusErrorC);
+                         SERIAL_ECHOLN(")");
+                       } else SERIAL_ECHOLN("equalBC=false");
+                       
+                     if (equalCA == true)
+                      {
+                         SERIAL_ECHOPAIR("Tower CA Equal (C=",radiusErrorC);
+                         SERIAL_ECHOPAIR(" A=",radiusErrorA);
+                         SERIAL_ECHOLN(")");
+                       } else SERIAL_ECHOLN("equalCA=false");                   
+                     
+                  
+                     
+                     if ((equalAB == true) and (equalBC == true) and (equalCA == true))
+                       {
+                       // all tower radius out by the same amount (within 0.02) - allow adjustment with delta rod length
                        SERIAL_ECHOLN("All tower radius errors equal");
                        adj_RadiusA = adj_RadiusB = adj_RadiusC = 0;
                        }
-                     else
+                     
+                     if ((equalAB == true) and (equalBC == false) and (equalCA == false))
                        {
-                       //tower radius out by different amounts .. determine which ones to adjust
-                       if (radiusErrorA == radiusErrorB)
+                       //Tower C radius error.. adjust it
+                       SERIAL_ECHOLN("TowerC Radius error - adjusting");
+                       if (adj_RadiusC == 0)
                          {
-                         //Tower C radius error.. adjust it
-                         SERIAL_ECHOLN("TowerC Radius error - adjusting");
-                         if (bed_level_z > bed_level_oz) adj_RadiusC = 0.1;
-                         if (bed_level_z < bed_level_oz) adj_RadiusC = -0.1;                     
-                         }
-                       if (radiusErrorB == radiusErrorC)
-                         {
-                         //Tower A radius error .. adjust it
-                         SERIAL_ECHOLN("TowerA Radius error - adjusting");
-                         if (bed_level_x > bed_level_ox) adj_RadiusA = 0.1;
-                         if (bed_level_x < bed_level_ox) adj_RadiusA = -0.1;
-                         
-                         } 
-                       if (radiusErrorA == radiusErrorC)
-                         {
-                         //Tower B radius error .. adjust it
-                         SERIAL_ECHOLN("TowerB Radius error - adjusting");
-                         if (bed_level_y > bed_level_oy) adj_RadiusB = 0.1;
-                         if (bed_level_y < bed_level_ox) adj_RadiusB = -0.1;                 
+                         if (bed_level_z < bed_level_oz) adj_RadiusC = 0.5;
+                         if (bed_level_z > bed_level_oz) adj_RadiusC = -0.5;                     
+                         SERIAL_ECHOPAIR("adj_RadiusC set to ",adj_RadiusC);
+                         SERIAL_ECHOLN("");
                          }
                        }
-                    
+                     if ((equalBC == true) and (equalAB == false) and (equalCA == false))
+                       {
+                       //Tower A radius error .. adjust it
+                       SERIAL_ECHOLN("TowerA Radius error - adjusting");
+                       if (adj_RadiusA == 0)
+                         {
+                         if (bed_level_x < bed_level_ox) adj_RadiusA = 0.5;
+                         if (bed_level_x > bed_level_ox) adj_RadiusA = -0.5;                     
+                         SERIAL_ECHOPAIR("adj_RadiusA set to ",adj_RadiusA);
+                         SERIAL_ECHOLN("");
+                         }
+                       } 
+                     if ((equalCA == true) and (equalAB == false) and (equalBC == false))
+                       {
+                       //Tower B radius error .. adjust it
+                       SERIAL_ECHOLN("TowerB Radius error - adjusting");
+                       if (adj_RadiusB == 0)
+                         {
+                         if (bed_level_y < bed_level_oy) adj_RadiusB = 0.5;
+                         if (bed_level_y > bed_level_oy) adj_RadiusB = -0.5;                     
+                         SERIAL_ECHOPAIR("adj_RadiusB set to ",adj_RadiusB);
+                         SERIAL_ECHOLN("");
+                         }
+                       }
+                                       
                                        
                      if (((adj_r > 0) and (bed_level_c > adj_r_target)) or ((adj_r < 0) and (bed_level_c < adj_r_target)))
                        {
@@ -1852,12 +1884,13 @@ void process_commands()
                        //overshot target .. reverse & scale down
                        adj_dr = -(adj_dr / 2);
                        }
-                       
+                     /*  
                      //Tower radus adjustment complete
                      if (bed_level_x == bed_level_ox) adj_RadiusA = 0;
                      if (bed_level_y == bed_level_oy) adj_RadiusB = 0;
                      if (bed_level_z == bed_level_oz) adj_RadiusC = 0;
-                    
+                     */
+                     
                      //Tower radius overshot targets?
                      if (((adj_RadiusA > 0) and (bed_level_x > bed_level_ox)) or ((adj_RadiusA < 0) and (bed_level_x < bed_level_ox))) adj_RadiusA = -(adj_RadiusA / 2);
                      if (((adj_RadiusB > 0) and (bed_level_y > bed_level_oy)) or ((adj_RadiusB < 0) and (bed_level_y < bed_level_oy))) adj_RadiusB = -(adj_RadiusB / 2);
