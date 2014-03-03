@@ -182,7 +182,7 @@ float add_homeing[3]={0,0,0};
   float delta_radius; // = DEFAULT_delta_radius;
   float delta_diagonal_rod; // = DEFAULT_DELTA_DIAGONAL_ROD;
   float DELTA_DIAGONAL_ROD_2;
-  float ac_prec = AUTOCALIBRATION_PRECISION;
+  float ac_prec = AUTOCALIBRATION_PRECISION / 2;
   float bed_radius = BED_DIAMETER / 2;
   float delta_tower1_x, delta_tower1_y;
   float delta_tower2_x, delta_tower2_y;
@@ -1002,7 +1002,6 @@ void calibrate_print_surface(float z_offset)
         }
     }
     
-    SERIAL_ECHOLN("Array cleared");
     for (int y = -3; y <= 3; y++) {
     int dir = y % 2 ? -1 : 1;
     for (int x = -3*dir; x != 4*dir; x += dir) {
@@ -1502,6 +1501,15 @@ void process_commands()
     case 30: //G30 Delta AutoCalibration
       int iterations;
       
+      //Zero the bed level array
+      for (int y = 0; y < 7; y++)
+        {
+        for (int x = 0; x < 7; x++)
+          {
+          bed_level[x][y] = 0.0;
+          }
+      }
+      
       if (code_seen('C'))
         {
         //Show carriage positions 
@@ -1579,18 +1587,18 @@ void process_commands()
          int loopcount = 1;
          float adj_r_target, adj_dr_target;
          float adj_r_target_delta = 0, adj_dr_target_delta = 0;
-         float adj_AlphaA_delta = 0;
-         float saved_bed_level_c, saved_adj_r_target, saved_adj_dr_target;
-         float saved_delta_diagonal_rod = delta_diagonal_rod;
-         float saved_adj_AlphaA_delta;
+      //   float adj_AlphaA_delta = 0;
+//         float saved_bed_level_c, saved_adj_r_target, saved_adj_dr_target;
+  //       float saved_delta_diagonal_rod = delta_diagonal_rod;
+    //     float saved_adj_AlphaA_delta;
          float adj_AlphaA, adj_AlphaB, adj_AlphaC;
          float adj_RadiusA, adj_RadiusB, adj_RadiusC;
          float radiusErrorA, radiusErrorB,radiusErrorC;
          float adj_r = 0, adj_dr = 0;
-         float adj_r_mul = 1, adj_dr_mul = 1;
-         float adj_AlphaA_mul;
-         float adj_prev_mul;
-         boolean adj_r_done, adj_dr_done;
+        // float adj_r_mul = 1, adj_dr_mul = 1;
+        // float adj_AlphaA_mul;
+        // float adj_prev_mul;
+         boolean adj_r_done, adj_dr_done, adj_tower_done;
          boolean adj_dr_allowed = true;
          float h_endstop = -100, l_endstop = 100;
          float probe_error, ftemp;
@@ -1714,8 +1722,9 @@ void process_commands()
                 //Determine which parameters require adjustment
                 if ((bed_level_c >= adj_r_target - ac_prec) and (bed_level_c <= adj_r_target + ac_prec)) adj_r_done = true; else adj_r_done = false;
                 if ((adj_dr_target >= adj_r_target - ac_prec) and (adj_dr_target <= adj_r_target + ac_prec)) adj_dr_done = true; else adj_dr_done = false;
+                if ((bed_level_x != bed_level_ox) or (bed_level_y != bed_level_oy) or (bed_level_z != bed_level_oz)) adj_tower_done = false; else adj_tower_done = true;
                             
-                if ((adj_r_done == false) or (adj_dr_done == false)) 
+                if ((adj_r_done == false) or (adj_dr_done == false) or (adj_tower_done == false)) 
                   {
                   //delta geometry adjustment required                     
                   SERIAL_ECHOLN("Adjusting Delta Geometry..");
@@ -1911,6 +1920,25 @@ void process_commands()
                   //probe bed and display report
                   bed_probe_all();
 		  calibration_report();
+
+                  //Check to see if autocal is complete to within limits..
+                  if (adj_dr_allowed == true)
+                    {
+                    if ((bed_level_x >= -ac_prec) and (bed_level_x <= ac_prec)
+                       and (bed_level_y >= -ac_prec) and (bed_level_y <= ac_prec)
+                       and (bed_level_z >= -ac_prec) and (bed_level_z <= ac_prec)
+                       and (bed_level_c >= -ac_prec) and (bed_level_c <= ac_prec)
+                       and (bed_level_ox >= -ac_prec) and (bed_level_ox <= ac_prec)
+                       and (bed_level_oy >= -ac_prec) and (bed_level_oy <= ac_prec)
+                       and (bed_level_oz >= -ac_prec) and (bed_level_oz <= ac_prec)) loopcount = iterations;
+                       }
+                    else
+                       {
+                       if ((bed_level_x >= -ac_prec) and (bed_level_x <= ac_prec)
+                          and (bed_level_y >= -ac_prec) and (bed_level_y <= ac_prec)
+                          and (bed_level_z >= -ac_prec) and (bed_level_z <= ac_prec)
+                          and (bed_level_c >= -ac_prec) and (bed_level_c <= ac_prec)) loopcount = iterations;
+                       }
                   }
                   
 		loopcount ++;    
@@ -1918,7 +1946,7 @@ void process_commands()
 
             SERIAL_ECHOLN("Auto Calibration Complete");
             SERIAL_ECHOLN("Issue M500 Command to save calibration settings to EPROM (if enabled)");
-            
+         /*   
             if ((abs(delta_diagonal_rod - saved_delta_diagonal_rod) > 1) and (adj_dr_allowed == true))
               {
               SERIAL_ECHOLN("");
@@ -1927,8 +1955,9 @@ void process_commands()
               SERIAL_ECHOLN("If you have measured your rods and you believe that this value is correct, this could indicate");
               SERIAL_ECHOLN("excessive twisting movement of carriages and/or loose screws/joints on carriages or end effector");
               }
-            } 
-     
+         */  
+          } 
+         
   	retract_z_probe();
  
         //Restore saved variables
