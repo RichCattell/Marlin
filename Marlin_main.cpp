@@ -993,39 +993,45 @@ float z_probe() {
 
 void calibrate_print_surface(float z_offset)
 {
-  //Zero the array
-  for (int y = 0; y < 7; y++)
-    {
-      for (int x = 0; x < 7; x++)
-        {
-          bed_level[x][y] = 0.0;
-        }
-    }
-    
+    float probe_bed_z, probe_z, probe_h, probe_l;
+    int probe_count;
+      
     for (int y = 3; y >= -3; y--) {
     int dir = y % 2 ? -1 : 1;
     for (int x = -3*dir; x != 4*dir; x += dir) {
       if (x*x + y*y < 11) {
 	destination[X_AXIS] = AUTOLEVEL_GRID * x - z_probe_offset[X_AXIS];
 	destination[Y_AXIS] = AUTOLEVEL_GRID * y - z_probe_offset[Y_AXIS];
-        //prepare_move();
-	bed_level[x+3][y+3] = z_probe() + z_offset;
+
+        probe_count = 0;
+        probe_z = -100;
+        probe_h = -100;
+        probe_l = 100;
+        do {
+           probe_bed_z = probe_z;
+           probe_z = z_probe() + z_offset;
+           if (probe_z > probe_h) probe_h = probe_z;
+           if (probe_z < probe_l) probe_l = probe_z;
+           probe_count ++;
+           } while ((probe_z != probe_bed_z) and (probe_count < 21));
+
+	bed_level[x+3][3-y] = probe_bed_z;
       } else {
-	bed_level[x+3][y+3] = 0.0;
+	bed_level[x+3][3-y] = 0.0;
       }
     }
     // For unprobed positions just copy nearest neighbor.
     if (abs(y) >= 3) {
-      bed_level[1][y+3] = bed_level[2][y+3];
-      bed_level[5][y+3] = bed_level[4][y+3];
+      bed_level[1][3-y] = bed_level[2][3-y];
+      bed_level[5][3-y] = bed_level[4][3-y];
     }
     if (abs(y) >=2) {
-      bed_level[0][y+3] = bed_level[1][y+3];
-      bed_level[6][y+3] = bed_level[5][y+3];
+      bed_level[0][3-y] = bed_level[1][3-y];
+      bed_level[6][3-y] = bed_level[5][3-y];
     }
     // Print calibration results for manual frame adjustment.
     for (int x = -3; x <= 3; x++) {
-      SERIAL_PROTOCOL_F(bed_level[x+3][y+3], 3);
+      SERIAL_PROTOCOL_F(bed_level[x+3][3-y], 3);
       SERIAL_PROTOCOLPGM(" ");
     }
     SERIAL_ECHOLN("");
@@ -1631,31 +1637,6 @@ void process_commands()
             feedmultiply = saved_feedmultiply;
             break;
             }
-
-        /*
-         //Probe all bed locations and check probe accuracy      
-         probe_error = z_probe_accuracy();
-         SERIAL_ECHO("Z-Probe error: ");
-         SERIAL_PROTOCOL_F(probe_error, 3);
-         SERIAL_ECHO(" mm ");
-       
-         if (probe_error < 0.03) 
-           {
-           SERIAL_ECHOLN("(OK)");
-           }
-         else
-           {
-           SERIAL_ECHOLN("(FAILED)");
-           SERIAL_ECHOLN("Z-Probe is not accurate enough to perform auto-calibration");
-
-           retract_z_probe(); 
- 
-           //Restore saved variables
-           feedrate = saved_feedrate;
-           feedmultiply = saved_feedmultiply;
-           break;
-           }
-          */
           
          if (code_seen('D'))
             {
@@ -1748,7 +1729,9 @@ void process_commands()
                        delta_radius += adj_r;
                        }
  
-                     if ((adj_dr_allowed == true) and (adj_dr_done == false)) // and (adj_r_done == true)) 
+                     if (adj_dr_allowed == false) adj_dr_done = true;
+ 
+                     if (adj_dr_done == false)
                        {
                        SERIAL_ECHOPAIR("Adjusting Diag Rod Length (",delta_diagonal_rod);
                        SERIAL_ECHOPAIR(" -> ", delta_diagonal_rod + adj_dr);
@@ -1804,7 +1787,8 @@ void process_commands()
                      if ((radiusErrorA >= (radiusErrorB - 0.02)) and (radiusErrorA <= (radiusErrorB + 0.02))) equalAB = true; else equalAB = false;
                      if ((radiusErrorB >= (radiusErrorC - 0.02)) and (radiusErrorB <= (radiusErrorC + 0.02))) equalBC = true; else equalBC = false;
                      if ((radiusErrorC >= (radiusErrorA - 0.02)) and (radiusErrorC <= (radiusErrorA + 0.02))) equalCA = true; else equalCA = false;
-                     
+              
+                 #ifdef DEBUG_MESSAGES
                      if (equalAB == true)
                        {
                          SERIAL_ECHOPAIR("Tower AB Equal (A=",radiusErrorA);
@@ -1825,13 +1809,14 @@ void process_commands()
                          SERIAL_ECHOPAIR(" A=",radiusErrorA);
                          SERIAL_ECHOLN(")");
                        } else SERIAL_ECHOLN("equalCA=false");                   
-                     
-                  
+                 #endif   
                      
                      if ((equalAB == true) and (equalBC == true) and (equalCA == true))
                        {
                        // all tower radius out by the same amount (within 0.02) - allow adjustment with delta rod length
+                 #ifdef DEBUG_MESSAGES
                        SERIAL_ECHOLN("All tower radius errors equal");
+                 #endif
                        adj_RadiusA = adj_RadiusB = adj_RadiusC = 0;
                        }
                      
@@ -1843,8 +1828,10 @@ void process_commands()
                          {
                          if (bed_level_z < bed_level_oz) adj_RadiusC = 0.5;
                          if (bed_level_z > bed_level_oz) adj_RadiusC = -0.5;                     
+                 #ifdef DEBUG_MESSAGES
                          SERIAL_ECHOPAIR("adj_RadiusC set to ",adj_RadiusC);
                          SERIAL_ECHOLN("");
+                 #endif
                          }
                        }
                      if ((equalBC == true) and (equalAB == false) and (equalCA == false))
@@ -1854,9 +1841,11 @@ void process_commands()
                        if (adj_RadiusA == 0)
                          {
                          if (bed_level_x < bed_level_ox) adj_RadiusA = 0.5;
-                         if (bed_level_x > bed_level_ox) adj_RadiusA = -0.5;                     
+                         if (bed_level_x > bed_level_ox) adj_RadiusA = -0.5;  
+                  #ifdef DEBUG_MESSAGES                   
                          SERIAL_ECHOPAIR("adj_RadiusA set to ",adj_RadiusA);
                          SERIAL_ECHOLN("");
+                  #endif  
                          }
                        } 
                      if ((equalCA == true) and (equalAB == false) and (equalBC == false))
@@ -1867,8 +1856,10 @@ void process_commands()
                          {
                          if (bed_level_y < bed_level_oy) adj_RadiusB = 0.5;
                          if (bed_level_y > bed_level_oy) adj_RadiusB = -0.5;                     
+                   #ifdef DEBUG_MESSAGES
                          SERIAL_ECHOPAIR("adj_RadiusB set to ",adj_RadiusB);
                          SERIAL_ECHOLN("");
+                   #endif
                          }
                        }
                                        
@@ -1884,12 +1875,6 @@ void process_commands()
                        //overshot target .. reverse & scale down
                        adj_dr = -(adj_dr / 2);
                        }
-                     /*  
-                     //Tower radus adjustment complete
-                     if (bed_level_x == bed_level_ox) adj_RadiusA = 0;
-                     if (bed_level_y == bed_level_oy) adj_RadiusB = 0;
-                     if (bed_level_z == bed_level_oz) adj_RadiusC = 0;
-                     */
                      
                      //Tower radius overshot targets?
                      if (((adj_RadiusA > 0) and (bed_level_x > bed_level_ox)) or ((adj_RadiusA < 0) and (bed_level_x < bed_level_ox))) adj_RadiusA = -(adj_RadiusA / 2);
@@ -1902,6 +1887,7 @@ void process_commands()
                      //Diag Rod adjustment complete?
                      if ((adj_dr_target >= (adj_r_target - ac_prec)) and (adj_dr_target <= (adj_r_target + ac_prec))) adj_dr_done = true; else adj_dr_done = false;
                     
+                  #ifdef DEBUG_MESSAGES
                      SERIAL_ECHOPAIR("c: ", bed_level_c);
                      SERIAL_ECHOPAIR(" x: ", bed_level_x);
                      SERIAL_ECHOPAIR(" y: ", bed_level_y);
@@ -1935,7 +1921,8 @@ void process_commands()
                      SERIAL_ECHOLN("");
                      SERIAL_ECHOPAIR("DeltaAlphaC: ",adj_AlphaC);
                      SERIAL_ECHOLN("");
-                       
+                   #endif
+                   
                    } while(((adj_r_done == false) or (adj_dr_done = false)) and (loopcount < iterations)); 
                  
                    }
