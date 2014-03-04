@@ -97,11 +97,14 @@
 // Effective horizontal distance bridged by diagonal push rods.
 #define DEFAULT_DELTA_RADIUS (DELTA_SMOOTH_ROD_OFFSET-DELTA_EFFECTOR_OFFSET-DELTA_CARRIAGE_OFFSET)
 
+//Uncomment to enable autocalibration debug messages
+//#define DEBUG_MESSAGES
+
 // Precision for G30 delta autocalibration function
 #define AUTOCALIBRATION_PRECISION 0.03 // mm
 
-// Diameter of print bed (printable area)
-#define BED_DIAMETER 160 // mm
+// Diameter of print bed - this is used to set the distance that autocalibration probes the bed at.
+#define BED_DIAMETER 170 // mm
 
 // Z-Probe variables
 // Start and end location values are used to deploy/retract the probe (will move from start to end and back again) 
@@ -112,6 +115,7 @@
 #define Z_PROBE_RETRACT_END_LOCATION {49, 84, 1, 0}     // X, Y, Z, E end location for z-probe retract sequence 
 
 #define AUTOLEVEL_GRID 24 // Distance between autolevel Z probing points, should be less than print surface radius/3.
+
 //===========================================================================
 //=============================Thermal Settings  ============================
 //===========================================================================

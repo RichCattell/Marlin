@@ -165,6 +165,7 @@ float probe_bed(float x, float y);
 void set_delta_constants();
 void home_delta_axis();
 void calibration_report();
+void bed_probe_all();
 void set_default_z_probe_offset();
 void set_delta_constants();
 void save_carriage_positions(int position_num);
@@ -207,7 +208,7 @@ extern float add_homeing[3];
 #ifdef DELTA
   extern float z_probe_offset[3];
   extern float endstop_adj[3];
-  extern float tower_adj[3];
+  extern float tower_adj[6];
   extern float delta_radius;
   extern float delta_diagonal_rod;
   //*extern float Z_MAX_POS;
