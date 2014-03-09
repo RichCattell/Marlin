@@ -1699,6 +1699,24 @@ void process_commands()
                   SERIAL_ECHOLN(" mm.."); 
                   zheight_changed = true;               
                   }
+                if (endstop_adj[0] < -5)
+                  {
+                  //If any endstop < -5 .. reduce all enstops and adjust build height
+                  l_endstop = 0;
+                  for(int x=0; x < 3; x++)
+                    { 
+                    if (endstop_adj[x] < l_endstop) l_endstop = endstop_adj[x]; 
+                    }
+                  for(int x=0; x < 3; x++)
+                    {
+                    endstop_adj[x] -= (l_endstop + 3);
+                    }
+                  max_pos[Z_AXIS] -= (l_endstop + 3);
+                  set_delta_constants();
+                  SERIAL_ECHOPAIR("Adjusting Z-Height to: ", max_pos[Z_AXIS]);
+                  SERIAL_ECHOLN(" mm.."); 
+                  zheight_changed = true;   
+                  }
                 }
                 else 
                 {
@@ -1720,12 +1738,12 @@ void process_commands()
                   //set inital direction and magnitude for delta radius & diagonal rod adjustment
                   if (adj_r == 0)
                     {
-                    if (adj_r_target > bed_level_c) adj_r = 1; else adj_r = -1;
+                    if (adj_r_target > bed_level_c) adj_r = 2; else adj_r = -2;
                     }
                   
                   if (adj_dr == 0)
                     {
-                    if (adj_r_target > adj_dr_target) adj_dr = 1; else adj_dr = -1;
+                    if (adj_r_target > adj_dr_target) adj_dr = 2; else adj_dr = -2;
                     }
                   
                   //Don't adjust tower positions on first iteration
