@@ -1703,9 +1703,9 @@ void process_commands()
                 else 
                 {
                 SERIAL_ECHOLN("Endstops: OK");
-                 
-                adj_r_target = bed_level_z; //(bed_level_x + bed_level_y + bed_level_z) / 3;
-                adj_dr_target = bed_level_oz; //(bed_level_ox + bed_level_oy + bed_level_oz) / 3;
+                               
+                adj_r_target = (bed_level_x + bed_level_y + bed_level_z) / 3;
+                adj_dr_target =(bed_level_ox + bed_level_oy + bed_level_oz) / 3;
                 
                 //Determine which parameters require adjustment
                 if ((bed_level_c >= (adj_r_target - ac_prec)) and (bed_level_c <= (adj_r_target + ac_prec))) adj_r_done = true; else adj_r_done = false;
@@ -1734,6 +1734,13 @@ void process_commands()
                   
                   do {   
                      //Apply adjustments 
+                     calculate_delta(current_position);
+                     plan_set_position(delta[X_AXIS] - (endstop_adj[X_AXIS] - saved_endstop_adj[X_AXIS]) , delta[Y_AXIS] - (endstop_adj[Y_AXIS] - saved_endstop_adj[Y_AXIS]), delta[Z_AXIS] - (endstop_adj[Z_AXIS] - saved_endstop_adj[Z_AXIS]), current_position[E_AXIS]);
+                  
+                     saved_endstop_adj[X_AXIS] = endstop_adj[X_AXIS];
+                     saved_endstop_adj[Y_AXIS] = endstop_adj[Y_AXIS];
+                     saved_endstop_adj[Z_AXIS] = endstop_adj[Z_AXIS];
+                     
                      if (adj_r_done == false) 
                        {
                        SERIAL_ECHOPAIR("Adjusting Delta Radius (",delta_radius);
@@ -1745,7 +1752,7 @@ void process_commands()
                      if (adj_dr_allowed == false) adj_dr_done = true;
                      
                      //Limit allowed diagonal rod adjustment 
-                     if ((delta_diagonal_rod > (saved_diagonal_rod + 3)) or (delta_diagonal_rod < (saved_diagonal_rod - 3))) adj_dr_done = true;
+                     //if ((delta_diagonal_rod > (saved_diagonal_rod + 3)) or (delta_diagonal_rod < (saved_diagonal_rod - 3))) adj_dr_done = true;
  
                      if ((adj_dr_done == false) and (adj_dr_allowed == true))
                        {
@@ -1761,6 +1768,10 @@ void process_commands()
                      tower_adj[3] += adj_RadiusA;
                      tower_adj[4] += adj_RadiusB;
                      tower_adj[5] += adj_RadiusC;
+                     
+                     endstop_adj[0] += bed_level_x / 1.05;
+                     endstop_adj[1] += bed_level_y / 1.05;
+                     endstop_adj[2] += bed_level_z / 1.05;
        
                      set_delta_constants();              
                           
@@ -1960,7 +1971,7 @@ void process_commands()
                     {
                     //apply endstop adjustments
                     calculate_delta(current_position);
-                    plan_set_position(delta[X_AXIS] + (endstop_adj[X_AXIS] - saved_endstop_adj[X_AXIS]) , delta[Y_AXIS] + (endstop_adj[Y_AXIS] - saved_endstop_adj[Y_AXIS]), delta[Z_AXIS] + (endstop_adj[Z_AXIS] - saved_endstop_adj[Z_AXIS]), current_position[E_AXIS]);
+                    plan_set_position(delta[X_AXIS] - (endstop_adj[X_AXIS] - saved_endstop_adj[X_AXIS]) , delta[Y_AXIS] - (endstop_adj[Y_AXIS] - saved_endstop_adj[Y_AXIS]), delta[Z_AXIS] - (endstop_adj[Z_AXIS] - saved_endstop_adj[Z_AXIS]), current_position[E_AXIS]);
                   
                     saved_endstop_adj[X_AXIS] = endstop_adj[X_AXIS];
                     saved_endstop_adj[Y_AXIS] = endstop_adj[Y_AXIS];
@@ -2717,24 +2728,13 @@ void process_commands()
              }
          break;
     case 667: 
-            float tempf;
-            for(int8_t i=0; i < 3; i++)
-             {
-             if (code_seen(axis_codes[i]))
-                {
-                tempf = code_value();
-                SERIAL_ECHO("Updating axis ");
-                SERIAL_ECHO(i);
-                SERIAL_ECHOLN("");
-            
-                calculate_delta(current_position);
-                if (i = 0) plan_set_position(delta[X_AXIS] + tempf, delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);   
-                if (i = 1) plan_set_position(delta[X_AXIS], delta[Y_AXIS] + tempf, delta[Z_AXIS], current_position[E_AXIS]);   
-                if (i = 2) plan_set_position(delta[X_AXIS] + tempf, delta[Y_AXIS], delta[Z_AXIS] + tempf, current_position[E_AXIS]);   
+        float tempx,tempy,tempz;
+        if (code_seen('X')) tempx = code_value();
+        if (code_seen('Y')) tempy = code_value();
+        if (code_seen('Z')) tempz = code_value();
              
-                }
-            
-             }
+        calculate_delta(current_position);
+        plan_set_position(delta[X_AXIS] + tempx, delta[Y_AXIS] + tempy, delta[Z_AXIS] + tempz, current_position[E_AXIS]);   
         break;
     #endif
     #ifdef FWRETRACT
