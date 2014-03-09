@@ -86,10 +86,10 @@
 #define DEFAULT_DELTA_DIAGONAL_ROD 217.5 // mm
 
 // Horizontal offset from middle of printer to smooth rod center.
-#define DELTA_SMOOTH_ROD_OFFSET 156.4 // mm //158
+#define DELTA_SMOOTH_ROD_OFFSET 152 //156.4 // mm //158
 
 // Horizontal offset of the universal joints on the end effector.
-#define DELTA_EFFECTOR_OFFSET 24 // mm 
+#define DELTA_EFFECTOR_OFFSET 21 // mm 
 
 // Horizontal offset of the universal joints on the carriages.
 #define DELTA_CARRIAGE_OFFSET 24 // mm  
@@ -98,7 +98,7 @@
 #define DEFAULT_DELTA_RADIUS (DELTA_SMOOTH_ROD_OFFSET-DELTA_EFFECTOR_OFFSET-DELTA_CARRIAGE_OFFSET)
 
 //Uncomment to enable autocalibration debug messages
-//#define DEBUG_MESSAGES
+#define DEBUG_MESSAGES
 
 // Precision for G30 delta autocalibration function
 #define AUTOCALIBRATION_PRECISION 0.03 // mm

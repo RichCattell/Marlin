@@ -1578,7 +1578,7 @@ void process_commands()
           }
          }
       
-       home_delta_axis();
+      // home_delta_axis();
        deploy_z_probe(); 
       
        //Probe all points
@@ -1600,9 +1600,16 @@ void process_commands()
          boolean equalAB, equalBC, equalCA;
          boolean adj_r_done, adj_dr_done, adj_tower_done;
          boolean adj_dr_allowed = true;
+         boolean zheight_changed = false;
          float h_endstop = -100, l_endstop = 100;
          float probe_error, ftemp;
-          
+         float saved_diagonal_rod;
+         float saved_endstop_adj[3];
+         
+         saved_endstop_adj[0] = endstop_adj[0];
+         saved_endstop_adj[1] = endstop_adj[1];
+         saved_endstop_adj[2] = endstop_adj[2];         
+         
          if (code_seen('D')) 
            {  
            delta_diagonal_rod = code_value();
@@ -1645,11 +1652,14 @@ void process_commands()
             adj_dr_allowed = false;
             }
          
+         saved_diagonal_rod = delta_diagonal_rod;
+         
          do {
             SERIAL_ECHO("Iteration: ");
             SERIAL_ECHO(loopcount);
             SERIAL_ECHOLN("");
-                                 
+            
+            zheight_changed = false;                     
             if ((bed_level_c > 3) or (bed_level_c < -3))
               {
               //Build height is not set correctly .. 
@@ -1657,6 +1667,7 @@ void process_commands()
               set_delta_constants();
               SERIAL_ECHOPAIR("Adjusting Z-Height to: ", max_pos[Z_AXIS]);
               SERIAL_ECHOLN(" mm..");
+              zheight_changed = true;
               } 
               else
               {
@@ -1670,6 +1681,7 @@ void process_commands()
                 
                 //Check that no endstop adj values are > 0 (not allowed).. if they are, reduce the build height to compensate.
                 h_endstop = 0;
+                zheight_changed = false;
                 for(int x=0; x < 3; x++)
                   { 
                   if (endstop_adj[x] > h_endstop) h_endstop = endstop_adj[x]; 
@@ -1684,19 +1696,20 @@ void process_commands()
                   max_pos[Z_AXIS] -= h_endstop + 2;
                   set_delta_constants();
                   SERIAL_ECHOPAIR("Adjusting Z-Height to: ", max_pos[Z_AXIS]);
-                  SERIAL_ECHOLN(" mm..");                
+                  SERIAL_ECHOLN(" mm.."); 
+                  zheight_changed = true;               
                   }
                 }
                 else 
                 {
                 SERIAL_ECHOLN("Endstops: OK");
-                 
+                               
                 adj_r_target = (bed_level_x + bed_level_y + bed_level_z) / 3;
-                adj_dr_target = (bed_level_ox + bed_level_oy + bed_level_oz) / 3;
+                adj_dr_target =(bed_level_ox + bed_level_oy + bed_level_oz) / 3;
                 
                 //Determine which parameters require adjustment
-                if ((bed_level_c >= adj_r_target - ac_prec) and (bed_level_c <= adj_r_target + ac_prec)) adj_r_done = true; else adj_r_done = false;
-                if ((adj_dr_target >= adj_r_target - ac_prec) and (adj_dr_target <= adj_r_target + ac_prec)) adj_dr_done = true; else adj_dr_done = false;
+                if ((bed_level_c >= (adj_r_target - ac_prec)) and (bed_level_c <= (adj_r_target + ac_prec))) adj_r_done = true; else adj_r_done = false;
+                if ((adj_dr_target >= (adj_r_target - ac_prec)) and (adj_dr_target <= (adj_r_target + ac_prec))) adj_dr_done = true; else adj_dr_done = false;
                 if ((bed_level_x != bed_level_ox) or (bed_level_y != bed_level_oy) or (bed_level_z != bed_level_oz)) adj_tower_done = false; else adj_tower_done = true;
                             
                 if ((adj_r_done == false) or (adj_dr_done == false) or (adj_tower_done == false)) 
@@ -1721,6 +1734,13 @@ void process_commands()
                   
                   do {   
                      //Apply adjustments 
+                     calculate_delta(current_position);
+                     plan_set_position(delta[X_AXIS] - (endstop_adj[X_AXIS] - saved_endstop_adj[X_AXIS]) , delta[Y_AXIS] - (endstop_adj[Y_AXIS] - saved_endstop_adj[Y_AXIS]), delta[Z_AXIS] - (endstop_adj[Z_AXIS] - saved_endstop_adj[Z_AXIS]), current_position[E_AXIS]);
+                  
+                     saved_endstop_adj[X_AXIS] = endstop_adj[X_AXIS];
+                     saved_endstop_adj[Y_AXIS] = endstop_adj[Y_AXIS];
+                     saved_endstop_adj[Z_AXIS] = endstop_adj[Z_AXIS];
+                     
                      if (adj_r_done == false) 
                        {
                        SERIAL_ECHOPAIR("Adjusting Delta Radius (",delta_radius);
@@ -1730,8 +1750,11 @@ void process_commands()
                        }
  
                      if (adj_dr_allowed == false) adj_dr_done = true;
+                     
+                     //Limit allowed diagonal rod adjustment 
+                     //if ((delta_diagonal_rod > (saved_diagonal_rod + 3)) or (delta_diagonal_rod < (saved_diagonal_rod - 3))) adj_dr_done = true;
  
-                     if (adj_dr_done == false)
+                     if ((adj_dr_done == false) and (adj_dr_allowed == true))
                        {
                        SERIAL_ECHOPAIR("Adjusting Diag Rod Length (",delta_diagonal_rod);
                        SERIAL_ECHOPAIR(" -> ", delta_diagonal_rod + adj_dr);
@@ -1745,6 +1768,10 @@ void process_commands()
                      tower_adj[3] += adj_RadiusA;
                      tower_adj[4] += adj_RadiusB;
                      tower_adj[5] += adj_RadiusC;
+                     
+                     endstop_adj[0] += bed_level_x / 1.05;
+                     endstop_adj[1] += bed_level_y / 1.05;
+                     endstop_adj[2] += bed_level_z / 1.05;
        
                      set_delta_constants();              
                           
@@ -1935,8 +1962,22 @@ void process_commands()
                        
                 if (loopcount < iterations)
                   {
-                  home_delta_axis();
-                
+                  
+                  if (zheight_changed == true) 
+                    {
+                    home_delta_axis();
+                    }
+                  else
+                    {
+                    //apply endstop adjustments
+                    calculate_delta(current_position);
+                    plan_set_position(delta[X_AXIS] - (endstop_adj[X_AXIS] - saved_endstop_adj[X_AXIS]) , delta[Y_AXIS] - (endstop_adj[Y_AXIS] - saved_endstop_adj[Y_AXIS]), delta[Z_AXIS] - (endstop_adj[Z_AXIS] - saved_endstop_adj[Z_AXIS]), current_position[E_AXIS]);
+                  
+                    saved_endstop_adj[X_AXIS] = endstop_adj[X_AXIS];
+                    saved_endstop_adj[Y_AXIS] = endstop_adj[Y_AXIS];
+                    saved_endstop_adj[Z_AXIS] = endstop_adj[Z_AXIS];
+                    }
+                    
                   //probe bed and display report
                   bed_probe_all();
 		  calibration_report();
@@ -2686,8 +2727,18 @@ void process_commands()
              SERIAL_ECHOLN("");
              }
          break;
+    case 667: 
+        float tempx,tempy,tempz;
+        if (code_seen('X')) tempx = code_value();
+        if (code_seen('Y')) tempy = code_value();
+        if (code_seen('Z')) tempz = code_value();
+             
+        calculate_delta(current_position);
+        plan_set_position(delta[X_AXIS] + tempx, delta[Y_AXIS] + tempy, delta[Z_AXIS] + tempz, current_position[E_AXIS]);   
+        break;
     #endif
     #ifdef FWRETRACT
+    
     case 207: //M207 - set retract length S[positive mm] F[feedrate mm/sec] Z[additional zlift/hop]
     {
       if(code_seen('S'))
