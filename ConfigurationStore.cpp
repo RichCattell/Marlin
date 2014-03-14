@@ -155,38 +155,32 @@ void Config_PrintSettings()
     SERIAL_ECHOLN("");
     #ifdef DELTA
       SERIAL_ECHO_START;
-      SERIAL_ECHOLNPGM("Endstop adjustment (mm):");
-      SERIAL_ECHO_START;
-      SERIAL_ECHOPAIR("  M666 X",endstop_adj[0]);
-      SERIAL_ECHOPAIR(" Y" ,endstop_adj[1]);
-      SERIAL_ECHOPAIR(" Z" ,endstop_adj[2]);
-      SERIAL_ECHOLN("");
-      SERIAL_ECHO_START;
       SERIAL_ECHOLNPGM("Delta Geometry adjustment:");
       SERIAL_ECHO_START;
       SERIAL_ECHOPAIR("  M666 A",tower_adj[0]);
       SERIAL_ECHOPAIR(" B" ,tower_adj[1]);
       SERIAL_ECHOPAIR(" C" ,tower_adj[2]);
-      SERIAL_ECHOPAIR(" E" ,tower_adj[3]);
-      SERIAL_ECHOPAIR(" F" ,tower_adj[4]);
-      SERIAL_ECHOPAIR(" G" ,tower_adj[5]);
+      SERIAL_ECHOPAIR(" I" ,tower_adj[3]);
+      SERIAL_ECHOPAIR(" J" ,tower_adj[4]);
+      SERIAL_ECHOPAIR(" K" ,tower_adj[5]);
       SERIAL_ECHOPAIR(" R" ,delta_radius);
       SERIAL_ECHOPAIR(" D" ,delta_diagonal_rod);
       SERIAL_ECHOPAIR(" H" ,max_pos[2]);
-      SERIAL_ECHOPAIR(" P" ,z_probe_offset[3]);
       SERIAL_ECHOLN("");
-/*
-      SERIAL_ECHOLN("Tower Positions");
-      SERIAL_ECHOPAIR("Tower1 X:",delta_tower1_x);
-      SERIAL_ECHOPAIR(" Y:",delta_tower1_y);
+      SERIAL_ECHO_START;
+      SERIAL_ECHOLNPGM("Endstop Offsets:");
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("  M666 X" ,endstop_adj[0]);
+      SERIAL_ECHOPAIR(" Y" ,endstop_adj[1]);
+      SERIAL_ECHOPAIR(" Z" ,endstop_adj[2]);
       SERIAL_ECHOLN("");
-      SERIAL_ECHOPAIR("Tower2 X:",delta_tower2_x);
-      SERIAL_ECHOPAIR(" Y:",delta_tower2_y);
+      SERIAL_ECHO_START;
+      SERIAL_ECHOLNPGM("Z-Probe Offset:");
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPAIR("  M666 P X" ,z_probe_offset[0]);
+      SERIAL_ECHOPAIR(" Y" ,z_probe_offset[1]);
+      SERIAL_ECHOPAIR(" Z" ,z_probe_offset[2]);
       SERIAL_ECHOLN("");
-      SERIAL_ECHOPAIR("Tower3 X:",delta_tower3_x);
-      SERIAL_ECHOPAIR(" Y:",delta_tower3_y);
-      SERIAL_ECHOLN("");
-*/
     #endif
  #ifdef PIDTEMP
     SERIAL_ECHO_START;
@@ -300,8 +294,15 @@ void Config_ResetDefault()
     #ifdef DELTA
       delta_radius = DEFAULT_DELTA_RADIUS;
       delta_diagonal_rod = DEFAULT_DELTA_DIAGONAL_ROD;
-      endstop_adj[0] = endstop_adj[1] = endstop_adj[2] = 0;
-      tower_adj[0] = tower_adj[1] = tower_adj[2] = tower_adj[3] = tower_adj[4] = tower_adj[5] = 0;
+      endstop_adj[0] = TOWER_A_ENDSTOP_ADJ;
+      endstop_adj[1] = TOWER_B_ENDSTOP_ADJ;
+      endstop_adj[2] = TOWER_C_ENDSTOP_ADJ;
+      tower_adj[0] = TOWER_A_POSITION_ADJ;
+      tower_adj[1] = TOWER_B_POSITION_ADJ;
+      tower_adj[2] = TOWER_C_POSITION_ADJ;
+      tower_adj[3] = TOWER_A_RADIUS_ADJ;
+      tower_adj[4] = TOWER_B_RADIUS_ADJ;
+      tower_adj[5] = TOWER_C_RADIUS_ADJ;
       max_pos[2] = MANUAL_Z_HOME_POS;
       set_default_z_probe_offset();
       set_delta_constants();
