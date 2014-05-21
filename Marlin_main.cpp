@@ -1043,6 +1043,8 @@ float probe_bed(float x, float y)
   //Probe bed at specified location and return z height of bed
   float probe_bed_z, probe_z, probe_h, probe_l;
   int probe_count;
+  float probe_sum;
+  float probe_avg;
 //  feedrate = homing_feedrate[Z_AXIS];
   destination[X_AXIS] = x - z_probe_offset[X_AXIS];
   destination[Y_AXIS] = y - z_probe_offset[Y_AXIS];
@@ -1054,16 +1056,23 @@ float probe_bed(float x, float y)
   probe_z = -100;
   probe_h = -100;
   probe_l = 100;
+  probe_sum=0;
+  probe_avg=0;
   do {
     probe_bed_z = probe_z;
     probe_z = z_probe() + z_probe_offset[Z_AXIS];
     if (probe_z > probe_h) probe_h = probe_z;
     if (probe_z < probe_l) probe_l = probe_z;
     probe_count ++;
-    //SERIAL_PROTOCOL_F(probe_z,3);
-    //SERIAL_ECHO(" ");
-    } while ((probe_z != probe_bed_z) and (probe_count < 21));
-    //SERIAL_ECHOLN("");
+    probe_sum = probe_sum + probe_z;
+    probe_avg = probe_sum/probe_count;  // in the loop so can change count once
+    SERIAL_PROTOCOL_F(probe_z,3);  // see the individual probes per site
+    SERIAL_ECHO(" ");
+    // } while ((probe_z != probe_bed_z) and (probe_count < 21)); 
+    } while (probe_count < 5);
+  SERIAL_ECHO(" \tprobe_avg = ");  // compare individual probes to average per site
+  SERIAL_PROTOCOL_F(probe_avg,4);
+  SERIAL_ECHOLN("");
   /*
   if (probe_count > 2)
     {
@@ -1088,7 +1097,7 @@ float probe_bed(float x, float y)
   SERIAL_PROTOCOL_F(probe_bed_z, 4);
   SERIAL_ECHOLN("");      
   */
-
+  probe_bed_z = probe_avg;
   return probe_bed_z;
   }
 
