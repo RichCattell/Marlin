@@ -264,7 +264,7 @@ static float bed_level[7][7] = {
 static bool home_all_axis = true;
 static float feedrate = 1500.0, next_feedrate, saved_feedrate, z_offset;
 static float bed_level_x, bed_level_y, bed_level_z;
-static float bed_level_c = 45; //used for inital bed probe safe distance (to avoid crashing into bed)
+static float bed_level_c = 25; //used for inital bed probe safe distance (to avoid crashing into bed)
 static float bed_level_ox, bed_level_oy, bed_level_oz;
 static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 static int loopcount;
@@ -1038,13 +1038,64 @@ void calibrate_print_surface(float z_offset)
   }
 }
 
-float probe_bed(float x, float y)
-  {
+//Sorting function (Author: Bill Gentles, Nov. 12, 2010)
+void isort(float *a, int n)
+//  *a is an array pointer function
+{
+  for (int i = 1; i < n; ++i) {
+	float j = a[i];
+	int k;
+	for (k = i - 1; (k >= 0) && (j < a[k]); k--) {
+      a[k + 1] = a[k];
+    }
+    a[k + 1] = j;
+  }
+}
+ 
+//Mode function, returning the mode or median
+float probe_mode(float *x,int n){
+  int i = 0;
+  int count = 0;
+  int maxCount = 0;
+  int prevCount = 0;
+  float mode = NULL;
+  int bimodal;
+ 
+  while(i<(n-1)){
+    count=0;
+    while(x[i]==x[i+1]){
+      count++;
+      i++;
+    }
+    if(count>0 & count>=maxCount){
+      mode=x[i];
+      if(count>maxCount){
+        bimodal=0;
+      }
+      prevCount=maxCount;
+      maxCount=count;
+    }
+    if(count>0 & prevCount==maxCount){//If the dataset has 2 or more modes.
+      bimodal=1;
+    }
+    if(count==0){
+      i++;
+    }
+   }
+   if(mode==NULL||bimodal==1){//Return the median if there is no mode.
+      mode=x[(n/2)];
+   }
+   return mode;
+}
+
+float probe_bed(float x, float y) {
   //Probe bed at specified location and return z height of bed
   float probe_bed_z, probe_z, probe_h, probe_l;
-  int probe_count;
-  float probe_sum;
-  float probe_avg;
+  
+  int probe_count = 0;
+  int probe_countmax = 7;
+  float probe_array[probe_countmax];
+  
 //  feedrate = homing_feedrate[Z_AXIS];
   destination[X_AXIS] = x - z_probe_offset[X_AXIS];
   destination[Y_AXIS] = y - z_probe_offset[Y_AXIS];
@@ -1052,55 +1103,38 @@ float probe_bed(float x, float y)
   prepare_move();
   st_synchronize();
 
-  probe_count = 0;
   probe_z = -100;
   probe_h = -100;
   probe_l = 100;
-  probe_sum=0;
-  probe_avg=0;
+  
   do {
     probe_bed_z = probe_z;
     probe_z = z_probe() + z_probe_offset[Z_AXIS];
     if (probe_z > probe_h) probe_h = probe_z;
     if (probe_z < probe_l) probe_l = probe_z;
+    probe_array[probe_count] = probe_z;
     probe_count ++;
-    probe_sum = probe_sum + probe_z;
-    probe_avg = probe_sum/probe_count;  // in the loop so can change count once
     SERIAL_PROTOCOL_F(probe_z,3);  // see the individual probes per site
     SERIAL_ECHO(" ");
-    // } while ((probe_z != probe_bed_z) and (probe_count < 21)); 
-    } while (probe_count < 5);
-  SERIAL_ECHO(" \tprobe_avg = ");  // compare individual probes to average per site
-  SERIAL_PROTOCOL_F(probe_avg,4);
-  SERIAL_ECHOLN("");
-  /*
-  if (probe_count > 2)
-    {
-    SERIAL_ECHO("Z-Probe error: ");
-    SERIAL_PROTOCOL_F(probe_h - probe_l, 3);
-    SERIAL_ECHO("mm in ");
-    SERIAL_ECHO(probe_count);
-    SERIAL_ECHO(" probes");
-    if (probe_count == 20)
-      {
-      SERIAL_ECHO(" (unable to get 2x consistant probes!)");
-      }
-    SERIAL_ECHOLN("");
-    }
-    */
-  /*
-  SERIAL_ECHO("Bed Z-Height at X:");
-  SERIAL_ECHO(x);
-  SERIAL_ECHO(" Y:");
-  SERIAL_ECHO(y);
-  SERIAL_ECHO(" = ");
-  SERIAL_PROTOCOL_F(probe_bed_z, 4);
-  SERIAL_ECHOLN("");      
-  */
-  probe_bed_z = probe_avg;
-  return probe_bed_z;
+  } while ((probe_z != probe_bed_z) and (probe_count < probe_countmax)); 
+  
+  if(probe_z == probe_bed_z){
+    SERIAL_ECHO(" \tExact Match: ");
+    SERIAL_PROTOCOL_F(probe_z,3);
+    probe_bed_z = probe_z;
   }
-
+  else {
+    isort(probe_array,probe_countmax);
+    probe_bed_z = probe_mode(probe_array,probe_countmax);
+    SERIAL_ECHO(" \tMode/Median: ");
+    SERIAL_PROTOCOL_F(probe_bed_z,4);
+  }
+  SERIAL_ECHO("\t\tRange: ");
+  SERIAL_PROTOCOL_F(probe_h - probe_l, 4);
+  SERIAL_ECHOLN(" mm");
+  return probe_bed_z;
+}
+  
 float z_probe_accuracy()
   {  
   //Perform z-probe accuracy test
@@ -3857,4 +3891,3 @@ bool setTargetedHotend(int code){
   }
   return false;
 }
-
