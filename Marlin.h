@@ -163,6 +163,8 @@ void get_coordinates();
 #ifdef DELTA
 float probe_bed(float x, float y);
 void set_delta_constants();
+void adj_tower_delta(int tower);
+void adj_tower_radius(int tower);
 void home_delta_axis();
 void calibration_report();
 void bed_probe_all();
@@ -171,6 +173,7 @@ void set_delta_constants();
 void save_carriage_positions(int position_num);
 void calculate_delta(float cartesian[3]);
 void adjust_delta(float cartesian[3]);
+void adj_endstops();
 extern float delta[3];
 extern float delta_tmp[3];
 extern float delta_tower1_x,delta_tower1_y;
