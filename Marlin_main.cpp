@@ -165,6 +165,7 @@ CardReader card;
 #endif
 float homing_feedrate[] = HOMING_FEEDRATE;
 float default_z_probe_offset[] = Z_PROBE_OFFSET;
+float probing_feedrate = PROBING_FEEDRATE;
 float z_probe_offset[3];
 float z_probe_deploy_start_location[] = Z_PROBE_DEPLOY_START_LOCATION;
 float z_probe_deploy_end_location[] = Z_PROBE_DEPLOY_END_LOCATION;
@@ -961,7 +962,7 @@ float z_probe() {
   float start_z = current_position[Z_AXIS];
   long start_steps = st_get_position(Z_AXIS);
 
-  feedrate = homing_feedrate[Z_AXIS]/10;
+  feedrate = probing_feedrate;
   destination[Z_AXIS] = -20;
   prepare_move_raw();
   st_synchronize();
@@ -986,7 +987,7 @@ float z_probe() {
     }
 
   feedrate = homing_feedrate[Z_AXIS];
-  destination[Z_AXIS] = mm+2;
+  destination[Z_AXIS] = mm+3;
   prepare_move_raw();
   return mm;
 }
@@ -1106,7 +1107,7 @@ float probe_bed(float x, float y) {
   probe_z = -100;
   probe_h = -100;
   probe_l = 100;
-  
+  SERIAL_ECHO("| ");
   do {
     probe_bed_z = probe_z;
     probe_z = z_probe() + z_probe_offset[Z_AXIS];
@@ -1114,24 +1115,29 @@ float probe_bed(float x, float y) {
     if (probe_z < probe_l) probe_l = probe_z;
     probe_array[probe_count] = probe_z;
     probe_count ++;
-    SERIAL_PROTOCOL_F(probe_z,3);  // see the individual probes per site
+    if (probe_z >=0) {SERIAL_ECHO(" ");} //align positive and negative points
+    SERIAL_PROTOCOL_F(probe_z,4);  // see the individual probes per site
     SERIAL_ECHO(" ");
   } while ((probe_z != probe_bed_z) and (probe_count < probe_countmax)); 
   
   if(probe_z == probe_bed_z){
-    SERIAL_ECHO(" \tExact Match: ");
-    SERIAL_PROTOCOL_F(probe_z,3);
+    SERIAL_ECHO("\t\tExact Match: ");
+    if (probe_z >=0) {SERIAL_ECHO(" ");}
+    SERIAL_PROTOCOL_F(probe_z,4);
     probe_bed_z = probe_z;
   }
   else {
     isort(probe_array,probe_countmax);
     probe_bed_z = probe_mode(probe_array,probe_countmax);
-    SERIAL_ECHO(" \tMode/Median: ");
+    SERIAL_ECHO("\t\tMode/Median: ");
+    if (probe_bed_z >=0) {SERIAL_ECHO(" ");}
     SERIAL_PROTOCOL_F(probe_bed_z,4);
   }
-  SERIAL_ECHO("\t\tRange: ");
+  SERIAL_ECHO("\tRange: ");
+  if (probe_h - probe_l >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(probe_h - probe_l, 4);
   SERIAL_ECHOLN(" mm");
+  SERIAL_ECHOLN("");
   return probe_bed_z;
 }
   
@@ -1197,45 +1203,55 @@ void bed_probe_all()
   
 void calibration_report()
   {
-  
   //Display Report
-  SERIAL_ECHOLN("\tZ-Tower\t\t\tEndstop Offsets");
+  SERIAL_ECHOLN("|\tZ-Tower\t\t\tEndstop Offsets");
 
-  SERIAL_ECHO("\t");
+  SERIAL_ECHO("| \t");
+  if (bed_level_z >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_z, 4);
   SERIAL_ECHOPAIR("\t\t\tX:",endstop_adj[0]);
   SERIAL_ECHOPAIR(" Y:",endstop_adj[1]);
   SERIAL_ECHOPAIR(" Z:",endstop_adj[2]);
   SERIAL_ECHOLN("");
 
+  SERIAL_PROTOCOLPGM("| ");
+  if (bed_level_oy >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_oy, 4);
-  SERIAL_PROTOCOLPGM("\t\t");
+  SERIAL_PROTOCOLPGM(" \t");
+  if (bed_level_ox >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_ox, 4);
-  SERIAL_ECHOLN("\t\tTower Position Adjust");
-
-  SERIAL_PROTOCOLPGM("\t");
-  SERIAL_PROTOCOL_F(bed_level_c, 4);
-  SERIAL_ECHOPAIR("\t\t\tA:",tower_adj[0]);
-  SERIAL_ECHOPAIR(" B:",tower_adj[1]);
-  SERIAL_ECHOPAIR(" C:",tower_adj[2]);
+  SERIAL_PROTOCOLPGM("\t\tTower Offsets");
   SERIAL_ECHOLN("");
-
+  
+  SERIAL_PROTOCOLPGM("| \t");
+  if (bed_level_c>=0) {SERIAL_ECHO(" ");}
+  SERIAL_PROTOCOL_F(bed_level_c,4);
+  SERIAL_ECHOPAIR("\t\t\tA:",tower_adj[0]);
+  SERIAL_ECHOPAIR(" b:",tower_adj[1]);     // Either Repetier Host or ECHOPAIR barfs on the string containing "B"
+  SERIAL_ECHOPAIR(" C:",tower_adj[2]);
+  SERIAL_ECHOLN(" ");
+  
+  SERIAL_PROTOCOLPGM("| ");
+  if (bed_level_x >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_x, 4);
-  SERIAL_PROTOCOLPGM("\t\t");
+  SERIAL_PROTOCOLPGM(" \t");
+  if (bed_level_y >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_y, 4);
   SERIAL_ECHOPAIR("\t\tI:",tower_adj[3]);
   SERIAL_ECHOPAIR(" J:",tower_adj[4]);
   SERIAL_ECHOPAIR(" K:",tower_adj[5]);
   SERIAL_ECHOLN("");
 
-  SERIAL_PROTOCOLPGM("\t");
+  SERIAL_PROTOCOLPGM("| \t");
+  if (bed_level_oz >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_oz, 4);
   SERIAL_PROTOCOLPGM("\t\t\tDelta Radius: ");
   SERIAL_PROTOCOL_F(delta_radius, 4);
   SERIAL_ECHOLN("");
 
-  SERIAL_PROTOCOLPGM("X-Tower\t\tY-Tower\t\tDiag Rod: ");
+  SERIAL_PROTOCOLPGM("| X-Tower\tY-Tower\t\tDiagonal Rod: ");
   SERIAL_PROTOCOL_F(delta_diagonal_rod, 4);
+  SERIAL_ECHOLN("");
   SERIAL_ECHOLN("");
 }
 
@@ -1338,8 +1354,8 @@ void process_commands()
         lcd_update();
       }
       break;
-      #ifdef FWRETRACT
-      case 10: // G10 retract
+#ifdef FWRETRACT
+    case 10: // G10 retract
       if(!retracted)
       {
         destination[X_AXIS]=current_position[X_AXIS];
@@ -1353,7 +1369,7 @@ void process_commands()
       }
 
       break;
-      case 11: // G10 retract_recover
+     case 11: // G10 retract_recover
       if(!retracted)
       {
         destination[X_AXIS]=current_position[X_AXIS];
@@ -1367,7 +1383,7 @@ void process_commands()
         prepare_move();
       }
       break;
-      #endif //FWRETRACT
+#endif //FWRETRACT
     case 28: //G28 Home all Axis one at a time
       saved_feedrate = feedrate;
       saved_feedmultiply = feedmultiply;
@@ -1383,8 +1399,6 @@ void process_commands()
 
 #ifdef DELTA
           // A delta can only safely home all axis at the same time
-          // all axis have to home at the same time
-
           // Move all carriages up together until the first endstop is hit.
           current_position[X_AXIS] = 0;
           current_position[Y_AXIS] = 0;
@@ -1575,6 +1589,7 @@ void process_commands()
           }
         break;
         }
+       if (code_seen('F')) {probing_feedrate=code_value();}
        if (code_seen('X') and code_seen('Y'))
           {
           //Probe specified X,Y point
@@ -2654,82 +2669,93 @@ void process_commands()
       break;
     #ifdef DELTA
       case 666: // M666 set delta endstop and geometry adjustment
-         for(int8_t i=0; i < 3; i++)
-         {
-           if (code_seen(axis_codes[i])) endstop_adj[i] = code_value();
-         }
-	   if (code_seen('A')) {
-		tower_adj[0] = code_value();
-		set_delta_constants();
-	   }
-	   if (code_seen('B')) {
-		tower_adj[1] = code_value();
-		set_delta_constants();
-	   }
-	   if (code_seen('C')) {
-		tower_adj[2] = code_value();
-		set_delta_constants();
-	   }
-           if (code_seen('I')) {
-		tower_adj[3] = code_value();
-		set_delta_constants();
-	   }
-	   if (code_seen('J')) {
-		tower_adj[4] = code_value();
-		set_delta_constants();
-	   }
-	   if (code_seen('K')) {
-		tower_adj[5] = code_value();
-		set_delta_constants();
-	   }
-           if (code_seen('R')) {
+        if ( !(code_seen('P'))) {
+			for(int8_t i=0; i < 3; i++)
+			{
+				if (code_seen(axis_codes[i])) endstop_adj[i] = code_value(); // Set the X, Y Z values for endstop offsets
+			}
+		}
+		if (code_seen('A')) {
+			tower_adj[0] = code_value();
+			set_delta_constants();
+		}
+		if (code_seen('B')) {
+			tower_adj[1] = code_value();
+			set_delta_constants();
+		}
+		if (code_seen('C')) {
+			tower_adj[2] = code_value();
+			set_delta_constants();
+		}
+		if (code_seen('I')) {
+			tower_adj[3] = code_value();
+			set_delta_constants();
+		}
+		if (code_seen('J')) {
+			tower_adj[4] = code_value();
+			set_delta_constants();
+		}
+		if (code_seen('K')) {
+			tower_adj[5] = code_value();
+			set_delta_constants();
+		}
+		if (code_seen('R')) {
            delta_radius = code_value();
            set_delta_constants();
-         }
-           if (code_seen('D')) {
-             delta_diagonal_rod = code_value();
-             set_delta_constants();
-         }
-           if (code_seen('H')) {
-             max_pos[Z_AXIS]= code_value();
-	     set_delta_constants();
-         }
-	   if (code_seen('P')) {
-             z_probe_offset[Z_AXIS]= code_value();
-	   }
-	   if (code_seen('L')) {
-	     SERIAL_ECHOLN("Current Delta geometry values:");
-	     SERIAL_ECHOPAIR("X (Endstop Adj): ",endstop_adj[0]);
-             SERIAL_ECHOLN("");
-	     SERIAL_ECHOPAIR("Y (Endstop Adj): ",endstop_adj[1]);
-             SERIAL_ECHOLN("");
-	     SERIAL_ECHOPAIR("Z (Endstop Adj): ",endstop_adj[2]);
-             SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("P (Z-Probe Offset): X", z_probe_offset[0]);
-             SERIAL_ECHOPAIR(" Y", z_probe_offset[1]);
-             SERIAL_ECHOPAIR(" Z", z_probe_offset[2]);
-             SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("A (Tower A Position Correction): ",tower_adj[0]);
-             SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("B (Tower B Position Correction): ",tower_adj[1]);
-             SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("C (Tower C Position Correction): ",tower_adj[2]);
-	     SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("I (Tower A Radius Correction): ",tower_adj[3]);
-             SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("J (Tower B Radius Correction): ",tower_adj[4]);
-             SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("K (Tower C Radius Correction): ",tower_adj[5]);
-	     SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("R (Delta Radius): ",delta_radius);
-             SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("D (Diagonal Rod Length): ",delta_diagonal_rod);
-	     SERIAL_ECHOLN("");
-             SERIAL_ECHOPAIR("H (Z-Height): ",max_pos[Z_AXIS]);
-             SERIAL_ECHOLN("");
-             }
-         break;
-    #endif
+        }
+        if (code_seen('D')) {
+            delta_diagonal_rod = code_value();
+            set_delta_constants();
+        }
+        if (code_seen('H')) {
+            max_pos[Z_AXIS]= code_value();
+			set_delta_constants();
+        }
+		if (code_seen('P')) {
+			float pz = code_value();
+			if ( !(code_seen(axis_codes[0]) || code_seen(axis_codes[1]) || code_seen(axis_codes[2]) ) ) { // Allow direct set of Z offset without an axis code
+			    z_probe_offset[Z_AXIS]= pz;
+			}
+			else {
+			 for(int8_t i=0; i < 3; i++)
+				{
+					if (code_seen(axis_codes[i])) z_probe_offset[i] = code_value();
+				}
+			}
+		}
+		if (code_seen('L')) {
+			SERIAL_ECHOLN("Current Delta geometry values:");
+			SERIAL_ECHOPAIR("X (Endstop Adj): ",endstop_adj[0]);
+            SERIAL_ECHOLN("");
+			SERIAL_ECHOPAIR("Y (Endstop Adj): ",endstop_adj[1]);
+            SERIAL_ECHOLN("");
+			SERIAL_ECHOPAIR("Z (Endstop Adj): ",endstop_adj[2]);
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("P (Z-Probe Offset): X", z_probe_offset[0]);
+            SERIAL_ECHOPAIR(" Y", z_probe_offset[1]);
+            SERIAL_ECHOPAIR(" Z", z_probe_offset[2]);
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("A (Tower A Position Correction): ",tower_adj[0]);
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("B (Tower B Position Correction): ",tower_adj[1]);
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("C (Tower C Position Correction): ",tower_adj[2]);
+			SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("I (Tower A Radius Correction): ",tower_adj[3]);
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("J (Tower B Radius Correction): ",tower_adj[4]);
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("K (Tower C Radius Correction): ",tower_adj[5]);
+			SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("R (Delta Radius): ",delta_radius);
+            SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("D (Diagonal Rod Length): ",delta_diagonal_rod);
+			SERIAL_ECHOLN("");
+            SERIAL_ECHOPAIR("H (Z-Height): ",max_pos[Z_AXIS]);
+            SERIAL_ECHOLN("");
+            }
+        break;
+    #endif  //Delta
     #ifdef FWRETRACT
     case 207: //M207 - set retract length S[positive mm] F[feedrate mm/sec] Z[additional zlift/hop]
     {
@@ -3891,3 +3917,5 @@ bool setTargetedHotend(int code){
   }
   return false;
 }
+
+
