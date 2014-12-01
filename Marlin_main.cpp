@@ -981,9 +981,9 @@ float z_probe() {
   plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],
 		    current_position[E_AXIS]);
 
-  for(int8_t i=0; i < NUM_AXIS; i++) {
-    saved_position[i] = float(st_get_position(i) / axis_steps_per_unit[i]);
-    }
+  saved_position[X_AXIS] = float((st_get_position(X_AXIS)) / axis_steps_per_unit[X_AXIS]);
+  saved_position[Y_AXIS] = float((st_get_position(Y_AXIS)) / axis_steps_per_unit[Y_AXIS]);
+  saved_position[Z_AXIS] = float((st_get_position(Z_AXIS)) / axis_steps_per_unit[Z_AXIS]);
 
   feedrate = homing_feedrate[Z_AXIS];
   destination[Z_AXIS] = mm+2;
