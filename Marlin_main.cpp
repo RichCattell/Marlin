@@ -1527,7 +1527,7 @@ float z_probe() {
   plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],
 		    current_position[E_AXIS]);
 
-  for(int8_t i=0; i < NUM_AXIS; i++) {
+  for(int8_t i=0; i < 3; i++) {
     saved_position[i] = float(st_get_position(i) / axis_steps_per_unit[i]);
     }
     
@@ -1879,7 +1879,7 @@ void calibration_report()
 }
 
 void save_carriage_positions(int position_num) {
-  for(int8_t i=0; i < NUM_AXIS; i++) {
+  for(int8_t i=0; i < 3; i++) {
     saved_positions[position_num][i] = saved_position[i];    
   }
 }
