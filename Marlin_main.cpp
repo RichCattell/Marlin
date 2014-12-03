@@ -933,19 +933,24 @@ void deploy_z_probe() {
 }
 
 void adj_endstops() {
-  
+  int loopcount = 0;
+  float err_val = 1.05;
+  float saved_ac_prec = ac_prec;
+  float prv_bed_level_x, prv_bed_level_y, prv_bed_level_z;
+  /*
   bed_level_z = probe_bed(0.0, bed_radius);
   bed_level_x = probe_bed(-SIN_60 * bed_radius, -COS_60 * bed_radius);
   bed_level_y = probe_bed(SIN_60 * bed_radius, -COS_60 * bed_radius);
+  */
   saved_endstop_adj[X_AXIS] = endstop_adj[X_AXIS];
   saved_endstop_adj[Y_AXIS] = endstop_adj[Y_AXIS];
   saved_endstop_adj[Z_AXIS] = endstop_adj[Z_AXIS];
-  
+
   do 
     {  
-    endstop_adj[0] += bed_level_x;// / err_val;
-    endstop_adj[1] += bed_level_y;// / err_val;
-    endstop_adj[2] += bed_level_z;// / err_val;
+    endstop_adj[0] += bed_level_x; // / err_val;
+    endstop_adj[1] += bed_level_y; // / err_val;
+    endstop_adj[2] += bed_level_z; // / err_val;
                       
     calculate_delta(current_position);
     plan_set_position(delta[X_AXIS] - (endstop_adj[X_AXIS] - saved_endstop_adj[X_AXIS]) , delta[Y_AXIS] - (endstop_adj[Y_AXIS] - saved_endstop_adj[Y_AXIS]), delta[Z_AXIS] - (endstop_adj[Z_AXIS] - saved_endstop_adj[Z_AXIS]), current_position[E_AXIS]);
@@ -953,7 +958,11 @@ void adj_endstops() {
     saved_endstop_adj[X_AXIS] = endstop_adj[X_AXIS];
     saved_endstop_adj[Y_AXIS] = endstop_adj[Y_AXIS];
     saved_endstop_adj[Z_AXIS] = endstop_adj[Z_AXIS];
-                          
+    /*
+    prv_bed_level_x = bed_level_x;
+    prv_bed_level_y = bed_level_y;
+    prv_bed_level_z = bed_level_z;
+    */    
     bed_level_z = probe_bed(0.0, bed_radius);
     bed_level_x = probe_bed(-SIN_60 * bed_radius, -COS_60 * bed_radius);
     bed_level_y = probe_bed(SIN_60 * bed_radius, -COS_60 * bed_radius);
@@ -965,9 +974,27 @@ void adj_endstops() {
     SERIAL_ECHO(" z:");
     SERIAL_PROTOCOL_F(bed_level_z, 4);
     SERIAL_ECHOLN("");
+    
+    /*
+    //Stuck in a loop?	
+    if ((bed_level_x == prv_bed_level_x) and (bed_level_y == prv_bed_level_y) and (bed_level_z == prv_bed_level_z))
+      {
+      loopcount ++;
+      }
+    if (loopcount > 2) 
+      {
+      //stuck in a loop!	
+      ac_prec += 0.01; //*** might need to adjust this!
+      loopcount = 0;
+      SERIAL_ECHOPAIR("Loop Detected - Decreasing precision to ", ac_prec);
+      SERIAL_ECHOLN("");                  
+      }
+    */  
     } while((bed_level_x < -ac_prec) or (bed_level_x > ac_prec)
              or (bed_level_y < -ac_prec) or (bed_level_y > ac_prec)
              or (bed_level_z < -ac_prec) or (bed_level_z > ac_prec));
+
+    if (saved_ac_prec != ac_prec) ac_prec = saved_ac_prec;	
 
     float high_endstop = 0;
     for(int x=0; x<3; x++) if (endstop_adj[x] > high_endstop) high_endstop = endstop_adj[x]; 
@@ -1189,11 +1216,14 @@ void fix_tower_errors()
 void adj_deltaradius() 
 {
   float adj_r;
+  float inital_probe;
 
   //set inital direction and magnitude for delta radius adjustment
   adj_r = -0.5;
   if (bed_level_c < 0) adj_r = 0.5;
-                 
+  
+  inital_probe = probe_bed(0.0, 0.0);  
+               
   do
     {
     delta_radius += adj_r;
@@ -1201,6 +1231,18 @@ void adj_deltaradius()
     
     bed_level_c = probe_bed(0.0, 0.0);
 
+    //Check that adj is moving in the correct direction
+    if (inital_probe != -1000)
+	 {
+	 if (((adj_r > 0) and (inital_probe > bed_level_c)) or ((adj_r < 0) and (inital_probe < bed_level_c)))
+		{
+		//Going the wrong way! - reverse adjustment
+		SERIAL_ECHOLN("Adjustment reversed!");
+		adj_r = -adj_r;
+		}
+	 }	
+     inital_probe = -1000;
+   
     //Adjust delta radius
     if (((adj_r > 0) and (bed_level_c > 0)) or ((adj_r < 0) and (bed_level_c < 0))) adj_r = -(adj_r / 2);
 
@@ -1784,55 +1826,55 @@ void bed_probe_all()
   
 void calibration_report()
   {
-  
   //Display Report
-  SERIAL_ECHOLN("\tZ-Tower\t\t       Endstop Offsets");
+  SERIAL_ECHOLN("|\tZ-Tower\t\t\tEndstop Offsets");
 
-  SERIAL_ECHO("\t");
+  SERIAL_ECHO("| \t");
+  if (bed_level_z >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_z, 4);
-  SERIAL_ECHO("\t\tX:");
-  SERIAL_PROTOCOL_F(endstop_adj[0], 4);
-  SERIAL_ECHO(" Y:");
-  SERIAL_PROTOCOL_F(endstop_adj[1], 4);
-  SERIAL_ECHO(" Z:");
-  SERIAL_PROTOCOL_F(endstop_adj[2], 4);
+  SERIAL_ECHOPAIR("\t\t\tX:",endstop_adj[0]);
+  SERIAL_ECHOPAIR(" Y:",endstop_adj[1]);
+  SERIAL_ECHOPAIR(" Z:",endstop_adj[2]);
   SERIAL_ECHOLN("");
 
+  SERIAL_PROTOCOLPGM("| ");
+  if (bed_level_oy >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_oy, 4);
-  SERIAL_PROTOCOLPGM("\t\t");
+  SERIAL_PROTOCOLPGM(" \t");
+  if (bed_level_ox >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_ox, 4);
-  SERIAL_ECHOLN("\t     Tower Position Adjust");
-
-  SERIAL_PROTOCOLPGM("\t");
-  SERIAL_PROTOCOL_F(bed_level_c, 4);
-  SERIAL_ECHO("\t\tA:");
-  SERIAL_PROTOCOL_F(tower_adj[0],4);
-  SERIAL_ECHO(" B:");
-  SERIAL_PROTOCOL_F(tower_adj[1],4);
-  SERIAL_ECHO(" C:");
-  SERIAL_PROTOCOL_F(tower_adj[2],4);
+  SERIAL_PROTOCOLPGM("\t\tTower Offsets");
   SERIAL_ECHOLN("");
-
+  
+  SERIAL_PROTOCOLPGM("| \t");
+  if (bed_level_c>=0) {SERIAL_ECHO(" ");}
+  SERIAL_PROTOCOL_F(bed_level_c,4);
+  SERIAL_ECHOPAIR("\t\t\tA:",tower_adj[0]);
+  SERIAL_ECHOPAIR(" b:",tower_adj[1]); // Either Repetier Host or ECHOPAIR barfs on the string containing "B"
+  SERIAL_ECHOPAIR(" C:",tower_adj[2]);
+  SERIAL_ECHOLN(" ");
+  
+  SERIAL_PROTOCOLPGM("| ");
+  if (bed_level_x >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_x, 4);
-  SERIAL_PROTOCOLPGM("\t\t");
+  SERIAL_PROTOCOLPGM(" \t");
+  if (bed_level_y >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_y, 4);
-  SERIAL_ECHO("\tI:");
-  SERIAL_PROTOCOL_F(tower_adj[3],4);
-  SERIAL_ECHO(" J:");
-  SERIAL_PROTOCOL_F(tower_adj[4],4);
-  SERIAL_ECHO(" K:");
-  SERIAL_PROTOCOL_F(tower_adj[5],4);
+  SERIAL_ECHOPAIR("\t\tI:",tower_adj[3]);
+  SERIAL_ECHOPAIR(" J:",tower_adj[4]);
+  SERIAL_ECHOPAIR(" K:",tower_adj[5]);
   SERIAL_ECHOLN("");
 
-  SERIAL_PROTOCOLPGM("\t");
+  SERIAL_PROTOCOLPGM("| \t");
+  if (bed_level_oz >=0) {SERIAL_ECHO(" ");}
   SERIAL_PROTOCOL_F(bed_level_oz, 4);
-  SERIAL_PROTOCOLPGM("\t\t  Delta Radius\tDiag Rod");
+  SERIAL_PROTOCOLPGM("\t\t\tDelta Radius: ");
+  SERIAL_PROTOCOL_F(delta_radius, 4);
   SERIAL_ECHOLN("");
 
-  SERIAL_PROTOCOLPGM("X-Tower\t\tY-Tower\t   ");
-  SERIAL_PROTOCOL_F(delta_radius, 4);
-  SERIAL_ECHO("\t");
+  SERIAL_PROTOCOLPGM("| X-Tower\tY-Tower\t\tDiagonal Rod: ");
   SERIAL_PROTOCOL_F(delta_diagonal_rod, 4);
+  SERIAL_ECHOLN("");
   SERIAL_ECHOLN("");
 }
 
