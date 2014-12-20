@@ -391,7 +391,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 #define EEPROM_CHITCHAT
 
  //Filament management (added by Tony@think3dprint3d.com based on https://github.com/lajos/Marlin/blob/tantillus/Marlin)
-#define EASY_LOAD					
+//#define EASY_LOAD					
 #define BOWDEN_LENGTH 560
 #define LCD_PURGE_LENGTH 3				
 #define LCD_RETRACT_LENGTH 3			
