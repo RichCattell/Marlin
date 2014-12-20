@@ -131,7 +131,11 @@
 	#define MSG_FILAMENTCHANGE "Change filament"
 	#define MSG_INIT_SDCARD "Init. SD-Card"	
 	#define MSG_CNG_SDCARD "Change SD-Card"
-
+ 	#define MSG_E_BOWDEN_LENGTH "Extrude " STRINGIFY(BOWDEN_LENGTH) "mm"
+ 	#define MSG_R_BOWDEN_LENGTH "Retract " STRINGIFY(BOWDEN_LENGTH) "mm"
+  #define MSG_PURGE_XMM "Purge " STRINGIFY(LCD_PURGE_LENGTH) "mm"
+	#define MSG_RETRACT_XMM "Retract " STRINGIFY(LCD_RETRACT_LENGTH) "mm"
+  
 // Serial Console Messages
 
 	#define MSG_Enqueing "enqueing \""

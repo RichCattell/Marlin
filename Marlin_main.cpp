@@ -305,6 +305,10 @@ bool Stopped=false;
 bool CooldownNoWait = true;
 bool target_direction;
 
+#ifdef EASY_LOAD
+bool allow_lengthy_extrude_once;		// for load/unload
+#endif
+
 //===========================================================================
 //=============================ROUTINES=============================
 //===========================================================================
