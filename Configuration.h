@@ -408,6 +408,10 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 //#define ULTIMAKERCONTROLLER //as available from the ultimaker online store.
 //#define ULTIPANEL  //the ultipanel as on thingiverse
 
+//The Think3dPrint3d Panelone
+// http://reprap.org/wiki/PanelOne
+//#define PANELONE
+
 // The MaKr3d Makr-Panel with graphic controller and SD support
 // http://reprap.org/wiki/MaKr3d_MaKrPanel
 //#define MAKRPANEL
@@ -452,6 +456,11 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 #endif
 
 #if defined(ULTIMAKERCONTROLLER) || defined(REPRAP_DISCOUNT_SMART_CONTROLLER) || defined(G3D_PANEL)
+ #define ULTIPANEL
+ #define NEWPANEL
+#endif
+
+#if defined (PANELONE)
  #define ULTIPANEL
  #define NEWPANEL
 #endif

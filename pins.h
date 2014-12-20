@@ -470,12 +470,24 @@
   #ifdef ULTRA_LCD
 
     #ifdef NEWPANEL
-      #define LCD_PINS_RS 16 
-      #define LCD_PINS_ENABLE 17
-      #define LCD_PINS_D4 23
-      #define LCD_PINS_D5 25 
-      #define LCD_PINS_D6 27
-      #define LCD_PINS_D7 29
+     #ifdef PANELONE
+       #define LCD_PINS_RS 40 //AUX2 PIN 6
+       #define LCD_PINS_ENABLE 42 //AUX2 PIN 8
+       #define LCD_PINS_D4 65 //AUX2 PIN 10
+       #define LCD_PINS_D5 66 //AUX2 PIN 9
+       #define LCD_PINS_D6 44 //AUX2 PIN 7
+       #define LCD_PINS_D7 64 //AUX2 PIN 5
+       #define BTN_EN1 63 //AUX2 PIN 4 
+       #define BTN_EN2 59 //AUX2 PIN 3
+       #define BTN_ENC 49 //AUX3 PIN 7
+     #else
+       #define LCD_PINS_RS 16 
+       #define LCD_PINS_ENABLE 17
+       #define LCD_PINS_D4 23
+       #define LCD_PINS_D5 25 
+       #define LCD_PINS_D6 27
+       #define LCD_PINS_D7 29
+     #endif    
 
       #ifdef REPRAP_DISCOUNT_SMART_CONTROLLER
         #define BEEPER 37
@@ -505,11 +517,17 @@
           #define SHIFT_OUT 40 // shift register
           #define SHIFT_CLK 44 // shift register
           #define SHIFT_LD 42 // shift register
+      #else
+        #ifdef PANELONE
+          #define BTN_EN1 59 //AUX2 PIN 3 
+          #define BTN_EN2 63 //AUX2 PIN 4
+          #define BTN_ENC 49 //AUX3 PIN 7
         #else
           #define BTN_EN1 37
           #define BTN_EN2 35
           #define BTN_ENC 31  //the click
-        #endif
+        #endif //PANELONE
+      #endif //REPRAPWORLD_KEYPAD
 
         #ifdef G3D_PANEL
           #define SDCARDDETECT 49
