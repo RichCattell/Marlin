@@ -1403,20 +1403,20 @@ void adj_tower_radius(int tower)
       SERIAL_PROTOCOL_F(target,6);
       SERIAL_ECHOLN("");
       
-      if (bed_level_ox < target) adj_t1_Radius = 0.5;
-      if (bed_level_ox > target) adj_t1_Radius = -0.5;     
+      if (bed_level_ox < target) adj_t1_Radius = 0.05;
+      if (bed_level_ox > target) adj_t1_Radius = -0.05;     
       }
     if (tower == 2)
       {
       target = (bed_level_ox + bed_level_oz) / 2;
-      if (bed_level_oy < target) adj_t2_Radius = 0.5;
-      if (bed_level_oy > target) adj_t2_Radius = -0.5;     
+      if (bed_level_oy < target) adj_t2_Radius = 0.05;
+      if (bed_level_oy > target) adj_t2_Radius = -0.05;     
       }
     if (tower == 3)
       {
       target = (bed_level_oy + bed_level_ox) / 2;
-      if (bed_level_oz < target) adj_t3_Radius = 0.5;
-      if (bed_level_oz > target) adj_t3_Radius = -0.5;       
+      if (bed_level_oz < target) adj_t3_Radius = 0.05;
+      if (bed_level_oz > target) adj_t3_Radius = -0.05;       
       }
     
     do
