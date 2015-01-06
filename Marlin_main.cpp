@@ -1475,7 +1475,7 @@ void adj_tower_radius(int tower)
       SERIAL_ECHOLN("");
       if (((bed_level_ox < target) and (adj_t1_Radius > 0)) or ((bed_level_ox > target) and (adj_t1_Radius < 0))) adj_t1_Radius = -(adj_t1_Radius / 2);
       //if ((bed_level_ox > target - (ac_prec/2)) and (bed_level_ox < target + (ac_prec/2))) t1_done = true;
-      if ((bed_level_ox + 0.01 > target) and (bed_level_ox - 0.01 < target)) t1_done = true;
+      if ((bed_level_ox + 0.0001 > target) and (bed_level_ox - 0.0001 < target)) t1_done = true;
       
       SERIAL_ECHO(" target:");
       SERIAL_PROTOCOL_F(target, 6);
@@ -1738,6 +1738,7 @@ float adj_diagrod_length()
 
      if (bed_level_c < target) adj_val = -adj_mag;
      if (bed_level_c > target) adj_val = adj_mag;
+     if ((bed_level_c - ac_prec < target) and (bed_level_c + ac_prec > target)) adj_val = 0;
         
      if (((adj_val > 0) and (adj_prv < 0)) or ((adj_val <0) and (adj_prv > 0)))
         {
