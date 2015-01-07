@@ -108,7 +108,7 @@
 #define AUTOCAL_PROBELIFT 2 // mm
 
 // Precision for G30 delta autocalibration function (calibrate to within +/- this value)
-#define AUTOCALIBRATION_PRECISION 0.04 // mm
+#define AUTOCALIBRATION_PRECISION 0.03// mm
 
 // Diameter of print bed - this is used to set the distance that autocalibration probes the bed at.
 #define BED_DIAMETER 170 // mm
