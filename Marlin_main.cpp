@@ -1616,7 +1616,7 @@ void process_commands()
          if (bed_level_y + endstop_adj[1] > h_endstop) h_endstop = bed_level_y + endstop_adj[1];
          if (bed_level_y + endstop_adj[1] < l_endstop) l_endstop = bed_level_y + endstop_adj[1];
          if (bed_level_z + endstop_adj[2] > h_endstop) h_endstop = bed_level_z + endstop_adj[2];
-         if (bed_level_z + endstop_adj[2] < l_endstop) l_endstop = bed_level_x + endstop_adj[2];
+         if (bed_level_z + endstop_adj[2] < l_endstop) l_endstop = bed_level_z + endstop_adj[2];
 
          if (h_endstop - l_endstop > 3)
             {
