@@ -1324,6 +1324,8 @@ int fix_tower_errors()
     if ((t1_err == true) and (t2_err == false) and (t3_err == false)) err_tower = 1;
     if ((t1_err == false) and (t2_err == true) and (t3_err == false)) err_tower = 2;
     if ((t1_err == false) and (t2_err == false) and (t3_err == true)) err_tower = 3;
+    
+  
                 
     SERIAL_ECHO("t1:");
     if (t1_err == true) SERIAL_ECHO("Err"); else SERIAL_ECHO("OK");  
@@ -1333,19 +1335,33 @@ int fix_tower_errors()
     if (t3_err == true) SERIAL_ECHO("Err"); else SERIAL_ECHO("OK");  
     SERIAL_ECHOLN("");
 
-
-    
     if (err_tower == 0) 
       {
       SERIAL_ECHOLN("Tower geometry OK");
       }
     else
       {
+      //If a tower has been adjusted previously.. continute to correct by adjusting that tower!        
+      if ((tower_adj[0] != 0) or (tower_adj[3] != 0))
+        {
+        SERIAL_ECHOLN("Tower 1 has already been adjusted");
+        err_tower = 1;
+        }
+      if ((tower_adj[1] != 0) or (tower_adj[4] != 0)) 
+        {
+        SERIAL_ECHOLN("Tower 2 has already been adjusted");
+        err_tower = 2;
+        }
+      if ((tower_adj[2] != 0) or (tower_adj[5] != 0)) 
+        {
+        SERIAL_ECHOLN("Tower 3 has already been adjusted");
+        err_tower = 3;
+        }
       SERIAL_ECHO("Tower");
       SERIAL_ECHO(int(err_tower));
       SERIAL_ECHOLN(" Error: Adjusting");
-      adj_tower_delta(err_tower);
       adj_tower_radius(err_tower); 
+      adj_tower_delta(err_tower);
       }
       //Set return value to indicate if anything has been changed (0 = no change)
       int retval = 0;
@@ -1353,16 +1369,18 @@ int fix_tower_errors()
       return retval;
 }
 
-void adj_deltaradius() 
+int adj_deltaradius() 
 {
   float adj_r;
   float prev_c;
   int c_nochange_count = 0;
   float nochange_r;
   
-  if ((bed_level_c >= -ac_prec) and (bed_level_c <= ac_prec))
+  //if ((bed_level_c >= -ac_prec) and (bed_level_c <= ac_prec))
+  if ((bed_level_c >= -ac_prec/2) and (bed_level_c <= ac_prec/2))
     {
     SERIAL_ECHOLN("Delta Radius OK");
+    return 0;
     }
   else
     {
@@ -1371,11 +1389,6 @@ void adj_deltaradius()
     adj_r = 0.1;
     if (bed_level_c > 0) adj_r = -0.1;
   
-    //Raise the head 20mm to avoid crashing into bed when changing D-Radius
-    ////***to be added***
-//    destination[Z_AXIS] += 20;
-//  prepare_move_raw();
-//st_synchronize();
     bed_safe_z = 20;
     
     do
@@ -1410,6 +1423,7 @@ void adj_deltaradius()
         set_delta_constants();
         bed_safe_z = 20;
         }
+    return 1;
     }
 }
 /*
@@ -1632,7 +1646,7 @@ void adj_tower_radius(int tower)
       bed_level_oz = probe_bed(0.0, -bed_radius);
           
       target = (bed_level_oy + bed_level_ox) / 2;
-      //temp = abs(bed_level_ox - target) / 2;
+      //target = temp + bed_level_oz;
       //if (bed_level_oz < target) target += temp;
       //if (bed_level_oz > target) target -= temp;
       if (((bed_level_oz < target) and (adj_t3_Radius > 0)) or ((bed_level_oz > target) and (adj_t3_Radius < 0))) adj_t3_Radius = -(adj_t3_Radius / 2);
@@ -1645,11 +1659,11 @@ void adj_tower_radius(int tower)
         }
       
       SERIAL_ECHO(" target:");
-      SERIAL_PROTOCOL_F(target,4);
+      SERIAL_PROTOCOL_F(target,6);
       SERIAL_ECHO(" oz:");
-      SERIAL_PROTOCOL_F(bed_level_oz,4);
+      SERIAL_PROTOCOL_F(bed_level_oz,6);
       SERIAL_ECHO(" tower radius adj:");
-      SERIAL_PROTOCOL_F(tower_adj[5], 4);
+      SERIAL_PROTOCOL_F(tower_adj[5], 6);
       if (t3_done == true) SERIAL_ECHOLN(" done:true"); else SERIAL_ECHOLN(" done:false");
       }      
       
@@ -2591,6 +2605,7 @@ void process_commands()
          {
          int err_tower;
          int iteration = 0;
+         int dr_adjusted;
        //do {
          do {       
             do {
@@ -2605,15 +2620,16 @@ void process_commands()
                calibration_report();
 
                SERIAL_ECHOLN("Checking delta radius");
-               adj_deltaradius();
+               dr_adjusted = adj_deltaradius();
 
                } while ((bed_level_c < -ac_prec) or (bed_level_c > ac_prec)
                          or (bed_level_x < -ac_prec) or (bed_level_x > ac_prec)
                          or (bed_level_y < -ac_prec) or (bed_level_y > ac_prec)
-                         or (bed_level_z < -ac_prec) or (bed_level_z > ac_prec));
+                         or (bed_level_z < -ac_prec) or (bed_level_z > ac_prec)
+                         or (dr_adjusted != 0));
              
-             bed_probe_all();
-             calibration_report();
+             //bed_probe_all();
+             //calibration_report();
              SERIAL_ECHOLN("Checking for tower geometry errors.."); 
              if (fix_tower_errors() != 0 )
                {
