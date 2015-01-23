@@ -2545,8 +2545,7 @@ void process_commands()
 
             bed_probe_all();
             calibration_report();
-            } while ((bed_level_c < -ac_prec) or (bed_level_c > ac_prec)
-                      or (bed_level_x < -ac_prec) or (bed_level_x > ac_prec)
+            } while ((bed_level_x < -ac_prec) or (bed_level_x > ac_prec)
                       or (bed_level_y < -ac_prec) or (bed_level_y > ac_prec)
                       or (bed_level_z < -ac_prec) or (bed_level_z > ac_prec));
 
