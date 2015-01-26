@@ -309,6 +309,9 @@ void Config_ResetDefault()
       tower_adj[3] = TOWER_A_RADIUS_ADJ;
       tower_adj[4] = TOWER_B_RADIUS_ADJ;
       tower_adj[5] = TOWER_C_RADIUS_ADJ;
+      diagrod_adj[0] = TOWER_A_DIAGROD_ADJ;
+      diagrod_adj[1] = TOWER_B_DIAGROD_ADJ;
+      diagrod_adj[2] = TOWER_C_DIAGROD_ADJ;
       max_pos[2] = MANUAL_Z_HOME_POS;
       set_default_z_probe_offset();
       set_delta_constants();

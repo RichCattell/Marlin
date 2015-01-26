@@ -178,11 +178,14 @@ float current_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
 float add_homeing[3]={0,0,0};
 #ifdef DELTA
   float endstop_adj[3]={0,0,0};
+  float diagrod_adj[3]={0,0,0};
   float saved_endstop_adj[3]={0,0,0};
   float tower_adj[6]={0,0,0,0,0,0};
   float delta_radius; // = DEFAULT_delta_radius;
   float delta_diagonal_rod; // = DEFAULT_DELTA_DIAGONAL_ROD;
-  float DELTA_DIAGONAL_ROD_2;
+  float DELTA_DIAGONAL_ROD1_2;
+  float DELTA_DIAGONAL_ROD2_2;
+  float DELTA_DIAGONAL_ROD3_2;
   float ac_prec = AUTOCALIBRATION_PRECISION;
   float bed_radius = BED_DIAMETER / 2;
   float delta_tower1_x, delta_tower1_y;
@@ -889,7 +892,9 @@ void set_delta_constants()
   base_max_pos[Z_AXIS]  = max_pos[Z_AXIS];
   base_home_pos[Z_AXIS] = max_pos[Z_AXIS];
   
-  DELTA_DIAGONAL_ROD_2 = pow(delta_diagonal_rod,2);
+  DELTA_DIAGONAL_ROD1_2 = pow(delta_diagonal_rod + diagrod_adj[0],2);
+  DELTA_DIAGONAL_ROD2_2 = pow(delta_diagonal_rod + diagrod_adj[1],2);
+  DELTA_DIAGONAL_ROD3_2 = pow(delta_diagonal_rod + diagrod_adj[2],2);
   
   // Effective X/Y positions of the three vertical towers.
   /*
@@ -2614,13 +2619,17 @@ void process_commands()
 
                SERIAL_ECHOLN("Checking/Adjusting endstop offsets");
                adj_endstops();             
-
+                               
                bed_probe_all();
                calibration_report();
 
-               SERIAL_ECHOLN("Checking delta radius");
-               dr_adjusted = adj_deltaradius();
-
+               if ((bed_level_c < -ac_prec) or (bed_level_c > ac_prec))
+                 {
+                 SERIAL_ECHOLN("Checking delta radius");
+                 dr_adjusted = adj_deltaradius();
+                 }
+               else dr_adjusted = 0;
+               
                } while ((bed_level_c < -ac_prec) or (bed_level_c > ac_prec)
                          or (bed_level_x < -ac_prec) or (bed_level_x > ac_prec)
                          or (bed_level_y < -ac_prec) or (bed_level_y > ac_prec)
@@ -3335,6 +3344,18 @@ void process_commands()
 		tower_adj[5] = code_value();
 		set_delta_constants();
 	   }
+	   if (code_seen('U')) {
+		diagrod_adj[0] = code_value();
+		set_delta_constants();
+	   }
+	   if (code_seen('V')) {
+		diagrod_adj[1] = code_value();
+		set_delta_constants();
+	   }
+	   if (code_seen('W')) {
+		diagrod_adj[2] = code_value();
+		set_delta_constants();
+	   }
            if (code_seen('R')) {
            delta_radius = code_value();
            set_delta_constants();
@@ -3399,6 +3420,15 @@ void process_commands()
              SERIAL_ECHOLN("");
              SERIAL_ECHO("K (Tower C Radius Correction): ");
              SERIAL_PROTOCOL_F(tower_adj[5],3);
+	     SERIAL_ECHOLN("");
+             SERIAL_ECHO("U (Tower A Diagional Rod Correction): ");
+             SERIAL_PROTOCOL_F(diagrod_adj[0],3);
+             SERIAL_ECHOLN("");
+             SERIAL_ECHO("V (Tower B Diagonal Rod Correction): ");
+             SERIAL_PROTOCOL_F(diagrod_adj[1],3);
+             SERIAL_ECHOLN("");
+             SERIAL_ECHO("W (Tower C Diagonal Rod Correction): ");
+             SERIAL_PROTOCOL_F(diagrod_adj[2],3);
 	     SERIAL_ECHOLN("");
              SERIAL_ECHOPAIR("R (Delta Radius): ",delta_radius);
              SERIAL_ECHOLN("");
@@ -4157,15 +4187,15 @@ void clamp_to_software_endstops(float target[3])
 #ifdef DELTA
 void calculate_delta(float cartesian[3]) 
 {
-  delta[X_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
+  delta[X_AXIS] = sqrt(DELTA_DIAGONAL_ROD1_2
                        - sq(delta_tower1_x-cartesian[X_AXIS])
                        - sq(delta_tower1_y-cartesian[Y_AXIS])
                        ) + cartesian[Z_AXIS];
-  delta[Y_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
+  delta[Y_AXIS] = sqrt(DELTA_DIAGONAL_ROD2_2
                        - sq(delta_tower2_x-cartesian[X_AXIS])
                        - sq(delta_tower2_y-cartesian[Y_AXIS])
                        ) + cartesian[Z_AXIS];
-  delta[Z_AXIS] = sqrt(DELTA_DIAGONAL_ROD_2
+  delta[Z_AXIS] = sqrt(DELTA_DIAGONAL_ROD3_2
                        - sq(delta_tower3_x-cartesian[X_AXIS])
                        - sq(delta_tower3_y-cartesian[Y_AXIS])
                        ) + cartesian[Z_AXIS];

@@ -101,8 +101,8 @@
 #define DEBUG_MESSAGES
 
 //Speed for autocalibration travel and probing moves
-#define AUTOCAL_TRAVELRATE 400 // mm/sec
-#define AUTOCAL_PROBERATE 10 //35 // mm/sec
+#define AUTOCAL_TRAVELRATE 200 // mm/sec
+#define AUTOCAL_PROBERATE 10 // mm/sec
 
 //Amount to lift head after probing a point
 #define AUTOCAL_PROBELIFT 2 // mm
@@ -127,6 +127,11 @@
 #define TOWER_A_RADIUS_ADJ 0 //Front Left Tower
 #define TOWER_B_RADIUS_ADJ 0 //Front Right Tower
 #define TOWER_C_RADIUS_ADJ 0 //Rear Tower
+
+//Diagonal Rod Adjustment - Adj diag rod for Tower by x mm from DEFAULT_DELTA_DIAGONAL_ROD value
+#define TOWER_A_DIAGROD_ADJ 0 //Front Left Tower
+#define TOWER_B_DIAGROD_ADJ 0 //Front Right Tower
+#define TOWER_C_DIAGROD_ADJ 0 //Rear Tower
 
 // Z-Probe variables
 // Start and end location values are used to deploy/retract the probe (will move from start to end and back again) 
