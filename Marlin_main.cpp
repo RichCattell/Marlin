@@ -2619,13 +2619,17 @@ void process_commands()
 
                SERIAL_ECHOLN("Checking/Adjusting endstop offsets");
                adj_endstops();             
-
+                               
                bed_probe_all();
                calibration_report();
 
-               SERIAL_ECHOLN("Checking delta radius");
-               dr_adjusted = adj_deltaradius();
-
+               if ((bed_level_c < -ac_prec) or (bed_level_c > ac_prec))
+                 {
+                 SERIAL_ECHOLN("Checking delta radius");
+                 dr_adjusted = adj_deltaradius();
+                 }
+               else dr_adjusted = 0;
+               
                } while ((bed_level_c < -ac_prec) or (bed_level_c > ac_prec)
                          or (bed_level_x < -ac_prec) or (bed_level_x > ac_prec)
                          or (bed_level_y < -ac_prec) or (bed_level_y > ac_prec)

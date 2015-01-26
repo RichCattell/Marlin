@@ -101,8 +101,8 @@
 #define DEBUG_MESSAGES
 
 //Speed for autocalibration travel and probing moves
-#define AUTOCAL_TRAVELRATE 400 // mm/sec
-#define AUTOCAL_PROBERATE 10 //35 // mm/sec
+#define AUTOCAL_TRAVELRATE 200 // mm/sec
+#define AUTOCAL_PROBERATE 10 // mm/sec
 
 //Amount to lift head after probing a point
 #define AUTOCAL_PROBELIFT 2 // mm
