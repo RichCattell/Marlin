@@ -37,7 +37,7 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 // the default values are used whenever there is a change to the data, to prevent
 // wrong data being written to the variables.
 // ALSO:  always make sure the variables in the Store and retrieve sections are in the same order.
-#define EEPROM_VERSION "V14"
+#define EEPROM_VERSION "V15"
 
 #ifdef EEPROM_SETTINGS
 void Config_StoreSettings() 
@@ -63,6 +63,7 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i,max_pos);
     EEPROM_WRITE_VAR(i,endstop_adj);
     EEPROM_WRITE_VAR(i,tower_adj);
+    EEPROM_WRITE_VAR(i,diagrod_adj);
     EEPROM_WRITE_VAR(i,z_probe_offset);
   #endif
   #ifndef ULTIPANEL
@@ -169,6 +170,12 @@ void Config_PrintSettings()
       SERIAL_PROTOCOL_F(tower_adj[4],3);
       SERIAL_ECHO(" K");
       SERIAL_PROTOCOL_F(tower_adj[5],3);
+      SERIAL_ECHO(" U");
+      SERIAL_PROTOCOL_F(diagrod_adj[0],3);
+      SERIAL_ECHO(" V");
+      SERIAL_PROTOCOL_F(diagrod_adj[1],3);
+      SERIAL_ECHO(" W");
+      SERIAL_PROTOCOL_F(diagrod_adj[2],3);
       SERIAL_ECHOPAIR(" R" ,delta_radius);
       SERIAL_ECHOPAIR(" D" ,delta_diagonal_rod);
       SERIAL_ECHOPAIR(" H" ,max_pos[2]);
@@ -234,6 +241,7 @@ void Config_RetrieveSettings()
           EEPROM_READ_VAR(i,max_pos);
           EEPROM_READ_VAR(i,endstop_adj);
           EEPROM_READ_VAR(i,tower_adj);
+          EEPROM_READ_VAR(i,diagrod_adj);
           EEPROM_READ_VAR(i,z_probe_offset);
           // Update delta constants for updated delta_radius & tower_adj values
           set_delta_constants();
