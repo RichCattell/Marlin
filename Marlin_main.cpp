@@ -1893,8 +1893,7 @@ float z_probe() {
     saved_position[i] = float(st_get_position(i) / axis_steps_per_unit[i]);
     }
     
-  //**PJR - Don't need to be so slow here
-  feedrate = AUTOCAL_TRAVELRATE * 60;  
+  feedrate = AUTOCAL_PROBERATE * 60;  
   destination[Z_AXIS] = mm + AUTOCAL_PROBELIFT;
   prepare_move_raw();
   st_synchronize();
