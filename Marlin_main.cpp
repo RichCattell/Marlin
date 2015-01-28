@@ -167,8 +167,10 @@ float homing_feedrate[] = HOMING_FEEDRATE;
 float default_z_probe_offset[] = Z_PROBE_OFFSET;
 float z_probe_offset[3];
 float z_probe_deploy_start_location[] = Z_PROBE_DEPLOY_START_LOCATION;
+float z_probe_deploy_mid_location[] = Z_PROBE_DEPLOY_MID_LOCATION; // **PJR - Add for KosselPro deploy/retract
 float z_probe_deploy_end_location[] = Z_PROBE_DEPLOY_END_LOCATION;
 float z_probe_retract_start_location[] = Z_PROBE_RETRACT_START_LOCATION;
+float z_probe_retract_mid_location[] = Z_PROBE_RETRACT_MID_LOCATION; // **PJR - Add for KosselPro deploy/retract
 float z_probe_retract_end_location[] = Z_PROBE_RETRACT_END_LOCATION;
 bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
 int feedmultiply=100; //100->1 200->2
@@ -271,7 +273,7 @@ static float bed_level[7][7] = {
 static bool home_all_axis = true;
 static float feedrate = 1500.0, next_feedrate, saved_feedrate, z_offset;
 static float bed_level_c, bed_level_x, bed_level_y, bed_level_z;
-static float bed_safe_z = 45; //used for inital bed probe safe distance (to avoid crashing into bed)
+static float bed_safe_z = 50; //45; //used for inital bed probe safe distance (to avoid crashing into bed)
 static float bed_level_ox, bed_level_oy, bed_level_oz;
 static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 static int loopcount;
@@ -919,22 +921,22 @@ void deploy_z_probe() {
   and (z_probe_deploy_start_location[Y_AXIS] != 0)
   and (z_probe_deploy_start_location[Z_AXIS] != 0))
     {
-    feedrate = homing_feedrate[X_AXIS];
+    feedrate = AUTOCAL_TRAVELRATE * 60; //homing_feedrate[X_AXIS]/2; **PJR - Use defines ...
     destination[X_AXIS] = z_probe_deploy_start_location[X_AXIS];
     destination[Y_AXIS] = z_probe_deploy_start_location[Y_AXIS];
     destination[Z_AXIS] = z_probe_deploy_start_location[Z_AXIS];
     prepare_move_raw();
 
-    feedrate = homing_feedrate[X_AXIS]/10;
+    //feedrate = homing_feedrate[X_AXIS]/2;
+    destination[X_AXIS] = z_probe_deploy_mid_location[X_AXIS];
+    destination[Y_AXIS] = z_probe_deploy_mid_location[Y_AXIS];
+    destination[Z_AXIS] = z_probe_deploy_mid_location[Z_AXIS];
+    prepare_move_raw();
+
+    //feedrate = homing_feedrate[X_AXIS]/2;
     destination[X_AXIS] = z_probe_deploy_end_location[X_AXIS];
     destination[Y_AXIS] = z_probe_deploy_end_location[Y_AXIS];
     destination[Z_AXIS] = z_probe_deploy_end_location[Z_AXIS];
-    prepare_move_raw();
-
-    feedrate = homing_feedrate[X_AXIS];
-    destination[X_AXIS] = z_probe_deploy_start_location[X_AXIS];
-    destination[Y_AXIS] = z_probe_deploy_start_location[Y_AXIS];
-    destination[Z_AXIS] = z_probe_deploy_start_location[Z_AXIS];
     prepare_move_raw();
     st_synchronize();
     }
@@ -1827,7 +1829,7 @@ void retract_z_probe() {
   and (z_probe_retract_start_location[Y_AXIS] != 0)
   and (z_probe_retract_start_location[Z_AXIS] != 0))
     {
-    feedrate = homing_feedrate[X_AXIS];
+    feedrate = AUTOCAL_TRAVELRATE * 60; //homing_feedrate[X_AXIS];
     destination[Z_AXIS] = 50;
     prepare_move_raw();
 
@@ -1842,16 +1844,16 @@ void retract_z_probe() {
     prepare_move_raw();
 
     // Move the nozzle below the print surface to push the probe up.
-    feedrate = homing_feedrate[Z_AXIS]/10;
+    feedrate = AUTOCAL_TRAVELRATE * 60 /5; //homing_feedrate[Z_AXIS]/10;
+    destination[X_AXIS] = z_probe_retract_mid_location[X_AXIS];
+    destination[Y_AXIS] = z_probe_retract_mid_location[Y_AXIS];
+    destination[Z_AXIS] = z_probe_retract_mid_location[Z_AXIS];
+    prepare_move_raw();
+
+    feedrate = AUTOCAL_TRAVELRATE * 60; //homing_feedrate[Z_AXIS];
     destination[X_AXIS] = z_probe_retract_end_location[X_AXIS];
     destination[Y_AXIS] = z_probe_retract_end_location[Y_AXIS];
     destination[Z_AXIS] = z_probe_retract_end_location[Z_AXIS];
-    prepare_move_raw();
-
-    feedrate = homing_feedrate[Z_AXIS];
-    destination[X_AXIS] = z_probe_retract_start_location[X_AXIS];
-    destination[Y_AXIS] = z_probe_retract_start_location[Y_AXIS];
-    destination[Z_AXIS] = z_probe_retract_start_location[Z_AXIS];
     prepare_move_raw();
     st_synchronize();
     }
@@ -1859,7 +1861,8 @@ void retract_z_probe() {
 
 float z_probe() {
   feedrate = AUTOCAL_TRAVELRATE * 60;
-  prepare_move();
+  prepare_move(); //**PJR - This is safe to use if the bed level array is cleared.  It is necessary to store new values in a temp array for G29 to avoid affecting probed heights.
+  //prepare_move_raw(); //**PJR - This avoids influence from the bed height array as it is created but means you need extra probe-lift clearance for safe travel moves (all parabolas).
   st_synchronize();
   
   enable_endstops(true);
@@ -1890,6 +1893,8 @@ float z_probe() {
     saved_position[i] = float(st_get_position(i) / axis_steps_per_unit[i]);
     }
     
+  //**PJR - Don't need to be so slow here
+  feedrate = AUTOCAL_TRAVELRATE * 60;  
   destination[Z_AXIS] = mm + AUTOCAL_PROBELIFT;
   prepare_move_raw();
   st_synchronize();
@@ -1898,6 +1903,18 @@ float z_probe() {
 
 void calibrate_print_surface(float z_offset) {
     float probe_z;
+    //**PJR - Create a temporary bed level array so that probing will not be biased by the creation of the new bed array 
+    // avoids the need to use raw moves for travel
+    float tmp_bed_level[7][7] = {
+      {0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0},
+      {0, 0, 0, 0, 0, 0, 0},
+    };
+
     for (int y = -3; y <= 3; y++)
     {
     int dir = y % 2 ? -1 : 1;
@@ -1913,7 +1930,7 @@ void calibrate_print_surface(float z_offset) {
         
         probe_z = probe_bed((AUTOLEVEL_GRID * x),(AUTOLEVEL_GRID * y));
         
-        bed_level[x+3][y+3] = probe_z + z_offset;
+        tmp_bed_level[x+3][y+3] = probe_z + z_offset;
         
         //bed_level[x+3][y+3] = probe_bed(float(AUTOLEVEL_GRID * x), float(AUTOLEVEL_GRID * y)) + z_offset;
         //destination[Z_AXIS] = saved_z;
@@ -1921,27 +1938,35 @@ void calibrate_print_surface(float z_offset) {
         }
       else
         {
-        bed_level[x+3][y+3] = 0.0;
+        tmp_bed_level[x+3][y+3] = 0.0;
         }
       }
     // For unprobed positions just copy nearest neighbor.
     if (abs(y) >= 3)
       {
-      bed_level[1][y+3] = bed_level[2][y+3];
-      bed_level[5][y+3] = bed_level[4][y+3];
+      tmp_bed_level[1][y+3] = tmp_bed_level[2][y+3];
+      tmp_bed_level[5][y+3] = tmp_bed_level[4][y+3];
       }
     if (abs(y) >=2) 
       {
-      bed_level[0][y+3] = bed_level[1][y+3];
-      bed_level[6][y+3] = bed_level[5][y+3];
+      tmp_bed_level[0][y+3] = tmp_bed_level[1][y+3];
+      tmp_bed_level[6][y+3] = tmp_bed_level[5][y+3];
       }
     // Print calibration results for manual frame adjustment.
     for (int x = -3; x <= 3; x++) 
       {
-      SERIAL_PROTOCOL_F(bed_level[x+3][y+3], 3);
+      SERIAL_PROTOCOL_F(tmp_bed_level[x+3][y+3], 3);
       SERIAL_PROTOCOLPGM(" ");
       }
     SERIAL_ECHOLN("");
+  }
+  //**PJR - Copy our temp bed level array to the final one.
+  for (int y = 0; y < 7; y++)
+  {
+    for (int x = 0; x < 7; x++)
+    {
+      bed_level[x][y] = tmp_bed_level[x][y];
+    }
   }
 }
 /*
@@ -2088,7 +2113,7 @@ float probe_bed(float x, float y)
     } while ((probe_done == false) and (probe_count < 20));
   
   feedrate = saved_feedrate;
-  bed_safe_z = probe_z + 2;
+  bed_safe_z = probe_z - z_probe_offset[Z_AXIS] + AUTOCAL_PROBELIFT; //3; //2; **PJR - probe_z is the *nozzle* position - we need to allow for deployed probe as well
   return probe_z;
   }
 
@@ -2096,7 +2121,7 @@ float probe_bed(float x, float y)
 void bed_probe_all()
   {
   //Do inital move to safe z level above bed
-  feedrate = homing_feedrate[Z_AXIS]; 
+  feedrate = AUTOCAL_TRAVELRATE * 60; // homing_feedrate[Z_AXIS]; 
   destination[Z_AXIS] = bed_safe_z;
   prepare_move_raw();
   st_synchronize();
@@ -2467,13 +2492,32 @@ void process_commands()
           }
         break;
         }
+
+      //Zero the bed level array
+      for (int y = 0; y < 7; y++)
+        {
+        for (int x = 0; x < 7; x++)
+          {
+          bed_level[x][y] = 0.0;
+          }
+      }
+
       saved_feedrate = feedrate;
       saved_feedmultiply = feedmultiply;
       feedmultiply = 100;
-      bed_safe_z = 2;
+      bed_safe_z = 25; //2; **PJR - Need to allow for height of deployed probe!
 
       deploy_z_probe();
-      calibrate_print_surface(z_probe_offset[Z_AXIS] +
+      
+      //**PJR - Do inital move to safe z level and location above bed
+      feedrate = AUTOCAL_TRAVELRATE * 60;
+      destination[X_AXIS] = 0.0;
+      destination[Y_AXIS] = -90.0; 
+      destination[Z_AXIS] = bed_safe_z;
+      prepare_move_raw();
+      st_synchronize();
+
+      calibrate_print_surface(//z_probe_offset[Z_AXIS] + **PJR - No need to feed this in - it is already accounted for in the probe routines!
 	(code_seen(axis_codes[Z_AXIS]) ? code_value() : 0.0));
       
       retract_z_probe();
@@ -2551,7 +2595,7 @@ void process_commands()
          SERIAL_ECHOLN("mm");
          }
        
-       bed_safe_z = 20;
+       bed_safe_z = 50; //20;
        home_delta_axis();
        deploy_z_probe(); 
         
