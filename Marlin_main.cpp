@@ -1557,7 +1557,7 @@ void adj_tower_radius(int tower)
   boolean done,t1_done,t2_done,t3_done;
   int nochange_count;
   float target, prev_target, prev_bed_level;
-  float temp;
+  float temp, adj_target;
   
     //Set inital tower adjustment values
     adj_t1_Radius = 0;
@@ -1568,20 +1568,26 @@ void adj_tower_radius(int tower)
     if ((tower == 1) and (adj_t1_Radius == 0))
       {
       target = (bed_level_oy + bed_level_oz) / 2;
-      if (bed_level_ox < target) adj_t1_Radius = -0.4; //0.4;
-      if (bed_level_ox > target) adj_t1_Radius = 0.4; //-0.4;     
+      temp = (bed_level_ox - target) / 2;
+      adj_target = target + temp;
+      if (bed_level_ox < adj_target) adj_t1_Radius = -0.4; //0.4;
+      if (bed_level_ox > adj_target) adj_t1_Radius = 0.4; //-0.4;     
       }
     if ((tower == 2) and (adj_t2_Radius == 0))
       {
       target = (bed_level_ox + bed_level_oz) / 2;
-      if (bed_level_oy < target) adj_t2_Radius = -0.4; //0.4;
-      if (bed_level_oy > target) adj_t2_Radius = 0.4; //-0.4;     
+      temp = (bed_level_oy - target) / 2;
+      adj_target = target + temp;
+      if (bed_level_oy < adj_target) adj_t2_Radius = -0.4; //0.4;
+      if (bed_level_oy > adj_target) adj_t2_Radius = 0.4; //-0.4;     
       }
     if ((tower == 3) and (adj_t3_Radius == 0))
       {
       target = (bed_level_oy + bed_level_ox) / 2;
-      if (bed_level_oz < target) adj_t3_Radius = -0.4; //0.4;
-      if (bed_level_oz > target) adj_t3_Radius = 0.4; //-0.4;       
+      temp = (bed_level_oz - target) / 2;
+      adj_target = target + temp;
+      if (bed_level_oz < adj_target) adj_t3_Radius = -0.4; //0.4;
+      if (bed_level_oz > adj_target) adj_t3_Radius = 0.4; //-0.4;       
       }
     
     do
@@ -1599,7 +1605,7 @@ void adj_tower_radius(int tower)
       {  
       t2_done = true;
       t3_done = true;
-      prev_target = target;
+      prev_target = adj_target;
       prev_bed_level = bed_level_ox;
 
       bed_level_ox = probe_bed(SIN_60 * bed_radius, COS_60 * bed_radius);
@@ -1607,13 +1613,11 @@ void adj_tower_radius(int tower)
       bed_level_oz = probe_bed(0.0, -bed_radius);
       
       target = (bed_level_oy + bed_level_oz) / 2;
-      //temp = abs(bed_level_ox - target) / 2; // * 2;
-      //if (bed_level_ox < target) target += temp;
-      //if (bed_level_ox > target) target -= temp;
-      if (((bed_level_ox < target) and (adj_t1_Radius > 0)) or ((bed_level_ox > target) and (adj_t1_Radius < 0))) adj_t1_Radius = -(adj_t1_Radius / 2);
-      if (bed_level_ox == target) t1_done = true;
-      //if ((bed_level_ox >= target -(target/2)) and (bed_level_ox <= target +(target/2))) t1_done = true;
-      if ((bed_level_ox + 0.0001 > prev_bed_level) and (bed_level_ox - 0.0001 < prev_bed_level) and (target + 0.0001 > prev_target) and (target - 0.0001 < prev_target)) nochange_count ++;
+      temp = (bed_level_ox - target) / 2;
+      adj_target = target + temp;
+      if (((bed_level_ox < adj_target) and (adj_t1_Radius > 0)) or ((bed_level_ox > adj_target) and (adj_t1_Radius < 0))) adj_t1_Radius = -(adj_t1_Radius / 2);
+      if (bed_level_ox == adj_target) t1_done = true;
+      if ((bed_level_ox + 0.0001 > prev_bed_level) and (bed_level_ox - 0.0001 < prev_bed_level) and (adj_target + 0.0001 > prev_target) and (adj_target - 0.0001 < prev_target)) nochange_count ++;
       if (nochange_count > 1) 
         {
         SERIAL_ECHOLN("Stuck in Loop.. Exiting");
@@ -1621,7 +1625,7 @@ void adj_tower_radius(int tower)
         }
       
       SERIAL_ECHO(" target:");
-      SERIAL_PROTOCOL_F(target, 6);
+      SERIAL_PROTOCOL_F(adj_target, 6);
       SERIAL_ECHO(" ox:");
       SERIAL_PROTOCOL_F(bed_level_ox, 6);	
       SERIAL_ECHO(" tower radius adj:");
@@ -1633,7 +1637,7 @@ void adj_tower_radius(int tower)
       {
       t1_done = true;
       t3_done = true;
-      prev_target = target;
+      prev_target = adj_target;
       prev_bed_level = bed_level_oy;
 
       bed_level_ox = probe_bed(SIN_60 * bed_radius, COS_60 * bed_radius);
@@ -1641,13 +1645,11 @@ void adj_tower_radius(int tower)
       bed_level_oz = probe_bed(0.0, -bed_radius);
       
       target = (bed_level_ox + bed_level_oz) /2;
-      //temp = abs(bed_level_ox - target) / 2;
-      //if (bed_level_oy < target) target += temp;
-      //if (bed_level_oy > target) target -= temp;
-      if (((bed_level_oy < target) and (adj_t2_Radius > 0)) or ((bed_level_oy > target) and (adj_t2_Radius < 0))) adj_t2_Radius = -(adj_t2_Radius / 2);
-      if (bed_level_oy == target) t2_done = true;
-      //if ((bed_level_oy >= target -(target/2)) and (bed_level_oy <= target +(target/2))) t2_done = true;
-      if ((bed_level_oy + 0.0001 > prev_bed_level) and (bed_level_oy - 0.0001 < prev_bed_level) and (target + 0.0001 > prev_target) and (target - 0.0001 < prev_target)) nochange_count ++;
+      temp = (bed_level_oy - target) / 2;
+      adj_target = target + temp;
+      if (((bed_level_oy < adj_target) and (adj_t2_Radius > 0)) or ((bed_level_oy > adj_target) and (adj_t2_Radius < 0))) adj_t2_Radius = -(adj_t2_Radius / 2);
+      if (bed_level_oy == adj_target) t2_done = true;
+      if ((bed_level_oy + 0.0001 > prev_bed_level) and (bed_level_oy - 0.0001 < prev_bed_level) and (adj_target + 0.0001 > prev_target) and (adj_target - 0.0001 < prev_target)) nochange_count ++;
       if (nochange_count > 1) 
         {
         SERIAL_ECHOLN("Stuck in Loop.. Exiting");
@@ -1655,7 +1657,7 @@ void adj_tower_radius(int tower)
         }
 
       SERIAL_ECHO(" target:");
-      SERIAL_PROTOCOL_F(target,4);
+      SERIAL_PROTOCOL_F(adj_target,4);
       SERIAL_ECHO(" oy:");
       SERIAL_PROTOCOL_F(bed_level_oy,4);     
       SERIAL_ECHO(" tower radius adj:");
@@ -1667,7 +1669,7 @@ void adj_tower_radius(int tower)
       {
       t1_done = true;
       t2_done = true;
-      prev_target = target;
+      prev_target = adj_target;
       prev_bed_level = bed_level_oz;
       
       bed_level_ox = probe_bed(SIN_60 * bed_radius, COS_60 * bed_radius);
@@ -1675,13 +1677,11 @@ void adj_tower_radius(int tower)
       bed_level_oz = probe_bed(0.0, -bed_radius);
           
       target = (bed_level_oy + bed_level_ox) / 2;
-      //target = temp + bed_level_oz;
-      //if (bed_level_oz < target) target += temp;
-      //if (bed_level_oz > target) target -= temp;
-      if (((bed_level_oz < target) and (adj_t3_Radius > 0)) or ((bed_level_oz > target) and (adj_t3_Radius < 0))) adj_t3_Radius = -(adj_t3_Radius / 2);
-      if (bed_level_oz == target) t3_done = true;
-      //if ((bed_level_oz >= target -(target/2)) and (bed_level_oz <= target +(target/2))) t3_done = true;
-      if ((bed_level_oz + 0.0001 > prev_bed_level) and (bed_level_oz - 0.0001 < prev_bed_level) and (target + 0.0001 > prev_target) and (target - 0.0001 < prev_target)) nochange_count ++;
+      temp = (bed_level_oz - target) / 2;
+      adj_target = target + temp;
+      if (((bed_level_oz < adj_target) and (adj_t3_Radius > 0)) or ((bed_level_oz > adj_target) and (adj_t3_Radius < 0))) adj_t3_Radius = -(adj_t3_Radius / 2);
+      if (bed_level_oz == adj_target) t3_done = true;
+      if ((bed_level_oz + 0.0001 > prev_bed_level) and (bed_level_oz - 0.0001 < prev_bed_level) and (adj_target + 0.0001 > prev_target) and (adj_target - 0.0001 < prev_target)) nochange_count ++;
       if (nochange_count > 1) 
         {
         SERIAL_ECHOLN("Stuck in Loop.. Exiting");
@@ -1689,7 +1689,7 @@ void adj_tower_radius(int tower)
         }
       
       SERIAL_ECHO(" target:");
-      SERIAL_PROTOCOL_F(target,6);
+      SERIAL_PROTOCOL_F(adj_target,6);
       SERIAL_ECHO(" oz:");
       SERIAL_PROTOCOL_F(bed_level_oz,6);
       SERIAL_ECHO(" tower radius adj:");
