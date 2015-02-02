@@ -1613,7 +1613,7 @@ void adj_tower_radius(int tower)
       bed_level_oz = probe_bed(0.0, -bed_radius);
       
       target = (bed_level_oy + bed_level_oz) / 2;
-      temp = (bed_level_ox - target) / 2;
+      temp = (bed_level_ox - target) / 4;
       adj_target = target + temp;
       if (((bed_level_ox < adj_target) and (adj_t1_Radius > 0)) or ((bed_level_ox > adj_target) and (adj_t1_Radius < 0))) adj_t1_Radius = -(adj_t1_Radius / 2);
       if (bed_level_ox == adj_target) t1_done = true;
@@ -1645,7 +1645,7 @@ void adj_tower_radius(int tower)
       bed_level_oz = probe_bed(0.0, -bed_radius);
       
       target = (bed_level_ox + bed_level_oz) /2;
-      temp = (bed_level_oy - target) / 2;
+      temp = (bed_level_oy - target) / 4;
       adj_target = target + temp;
       if (((bed_level_oy < adj_target) and (adj_t2_Radius > 0)) or ((bed_level_oy > adj_target) and (adj_t2_Radius < 0))) adj_t2_Radius = -(adj_t2_Radius / 2);
       if (bed_level_oy == adj_target) t2_done = true;
@@ -1677,7 +1677,7 @@ void adj_tower_radius(int tower)
       bed_level_oz = probe_bed(0.0, -bed_radius);
           
       target = (bed_level_oy + bed_level_ox) / 2;
-      temp = (bed_level_oz - target) / 2;
+      temp = (bed_level_oz - target) / 4;
       adj_target = target + temp;
       if (((bed_level_oz < adj_target) and (adj_t3_Radius > 0)) or ((bed_level_oz > adj_target) and (adj_t3_Radius < 0))) adj_t3_Radius = -(adj_t3_Radius / 2);
       if (bed_level_oz == adj_target) t3_done = true;
@@ -1720,8 +1720,8 @@ void adj_tower_delta(int tower)
 
         if (tower == 1)
           {
-          //if (bed_level_oy < bed_level_oz - 0.00001) adj_val = adj_mag;
-	  //if (bed_level_oy > bed_level_oz + 0.00001) adj_val = -adj_mag;
+          //if (bed_level_oy < bed_level_oz - 0.0001) adj_val = adj_mag;
+          //if (bed_level_oy > bed_level_oz + 0.0001) adj_val = -adj_mag;
           if (bed_level_oy < bed_level_oz) adj_val = adj_mag;
 	  if (bed_level_oy > bed_level_oz) adj_val = -adj_mag;
           }
