@@ -111,7 +111,7 @@
 #define AUTOCALIBRATION_PRECISION 0.04// mm
 
 // Diameter of print bed - this is used to set the distance that autocalibration probes the bed at.
-#define BED_DIAMETER 170 // mm
+#define BED_DIAMETER 160 // mm
 
 //Endstop Offset Adjustment - All values are in mm and must be negative (to move down away from endstop switches) 
 #define TOWER_A_ENDSTOP_ADJ 0 // Front Left Tower
