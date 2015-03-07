@@ -1399,8 +1399,7 @@ int fix_tower_errors()
 int adj_deltaradius() 
 {
   float adj_r;
-  float prev_c;
-  //float prev_z;
+  float prev_c, prev_z;
   int c_nochange_count = 0;
   //int z_nochange_count = 0;
   float nochange_r;
@@ -1415,8 +1414,8 @@ int adj_deltaradius()
     {
     SERIAL_ECHOLN("Adjusting Delta Radius");
     //set inital direction and magnitude for delta radius adjustment
-    adj_r = 0.1;
-    if (bed_level_c > bed_level_z) adj_r = -0.1;
+    adj_r = -0.5;
+    if (bed_level_c < bed_level_z) adj_r = 0.5;
     //if (bed_level_z > 0) adj_r = -0.1;
     
     bed_safe_z = 20;
@@ -1427,7 +1426,7 @@ int adj_deltaradius()
       set_delta_constants();
     
       prev_c = bed_level_c;
-      //prev_z = bed_level_z;
+      prev_z = bed_level_z;
       bed_level_c = probe_bed(0.0, 0.0);
       bed_level_z = probe_bed(0.0, bed_radius);
       
@@ -1443,25 +1442,28 @@ int adj_deltaradius()
       SERIAL_ECHOLN("");
    
       //Adjust delta radius
-      if (((adj_r > 0) and (bed_level_c < prev_c)) or ((adj_r < 0) and (bed_level_c > prev_c))) adj_r = -(adj_r / 2);
-      //if (((adj_r > 0) and (bed_level_z < prev_z)) or ((adj_r < 0) and (bed_level_z > prev_z))) adj_r = -(adj_r / 2);
-
+      //if (((adj_r > 0) and (bed_level_c < prev_c)) or ((adj_r < 0) and (bed_level_c > prev_c))) adj_r = -(adj_r / 2);
+      if (((bed_level_c > prev_c) and (bed_level_z > prev_z)) or ((bed_level_c < prev_c) and (bed_level_z < prev_z))) adj_r = -(adj_r / 2);
+      //if (abs(adj_r) < 0.0313) adj_r = adj_r * 2; 
+         
       //Count iterations with no change to c probe point
       if (bed_level_c == prev_c) c_nochange_count ++;
       //if (bed_level_z == prev_z) z_nochange_count ++;
       if (c_nochange_count == 1) nochange_r = delta_radius;
       //if (z_nochange_count == 1) nochange_r = delta_radius;
 
-      } while(((bed_level_z < bed_level_c -ac_prec) or (bed_level_z > bed_level_c + ac_prec)) and (c_nochange_count < 3));
+      } while(((bed_level_z < bed_level_c - 0.001) or (bed_level_z > bed_level_c + 0.001)) and (c_nochange_count < 3));
       //} while(((bed_level_z < bed_level_c - ac_prec) or (bed_level_z > bed_level_c + ac_prec)) and (z_nochange_count < 3));
       
-      if (c_nochange_count > 0) 
+     
+     if (c_nochange_count > 0) 
       //if (z_nochange_count > 0) 
         {
         delta_radius = nochange_r;
         set_delta_constants();
         bed_safe_z = 20;
         }
+     
     return 1;
     }
 }
@@ -1655,24 +1657,24 @@ void adj_tower_radius(int tower)
       target = (bed_level_oy + bed_level_oz) / 2;
       temp = (bed_level_ox + target) * 2;
       adj_target = temp;
-      if (bed_level_ox < adj_target) adj_t1_Radius = -0.2; //0.4;
-      if (bed_level_ox > adj_target) adj_t1_Radius = 0.2; //-0.4;     
+      if (bed_level_ox < adj_target) adj_t1_Radius = -1; //0.2; //0.4;
+      if (bed_level_ox > adj_target) adj_t1_Radius = 1; //0.2; //-0.4;     
       }
     if ((tower == 2) and (adj_t2_Radius == 0))
       {
       target = (bed_level_ox + bed_level_oz) / 2;
       temp = (bed_level_oy + target) * 2;
       adj_target = temp;
-      if (bed_level_oy < adj_target) adj_t2_Radius = -0.2; //0.4;
-      if (bed_level_oy > adj_target) adj_t2_Radius = 0.2; //-0.4;     
+      if (bed_level_oy < adj_target) adj_t2_Radius = -1; //0.2; //0.4;
+      if (bed_level_oy > adj_target) adj_t2_Radius = 1; //0.2; //-0.4;     
       }
     if ((tower == 3) and (adj_t3_Radius == 0))
       {
       target = (bed_level_oy + bed_level_ox) / 2;
       temp = (bed_level_oz + target) * 2;
       adj_target = temp;
-      if (bed_level_oz < adj_target) adj_t3_Radius = -0.2; //0.4;
-      if (bed_level_oz > adj_target) adj_t3_Radius = 0.2; //-0.4;       
+      if (bed_level_oz < adj_target) adj_t3_Radius = -1; //0.2; //0.4;
+      if (bed_level_oz > adj_target) adj_t3_Radius = 1; //0.2; //-0.4;       
       }
     
     do
