@@ -1655,7 +1655,7 @@ void adj_tower_radius(int tower)
     if ((tower == 1) and (adj_t1_Radius == 0))
       {
       target = (bed_level_oy + bed_level_oz) / 2;
-      temp = (bed_level_ox + target) * 2;
+      temp = (bed_level_ox - target) / 1.95;
       adj_target = temp;
       if (bed_level_ox < adj_target) adj_t1_Radius = -1; //0.2; //0.4;
       if (bed_level_ox > adj_target) adj_t1_Radius = 1; //0.2; //-0.4;     
@@ -1663,7 +1663,7 @@ void adj_tower_radius(int tower)
     if ((tower == 2) and (adj_t2_Radius == 0))
       {
       target = (bed_level_ox + bed_level_oz) / 2;
-      temp = (bed_level_oy + target) * 2;
+      temp = (bed_level_oy - target) / 1.95;
       adj_target = temp;
       if (bed_level_oy < adj_target) adj_t2_Radius = -1; //0.2; //0.4;
       if (bed_level_oy > adj_target) adj_t2_Radius = 1; //0.2; //-0.4;     
@@ -1671,7 +1671,7 @@ void adj_tower_radius(int tower)
     if ((tower == 3) and (adj_t3_Radius == 0))
       {
       target = (bed_level_oy + bed_level_ox) / 2;
-      temp = (bed_level_oz + target) * 2;
+      temp = (bed_level_oz - target) / 1.95;
       adj_target = temp;
       if (bed_level_oz < adj_target) adj_t3_Radius = -1; //0.2; //0.4;
       if (bed_level_oz > adj_target) adj_t3_Radius = 1; //0.2; //-0.4;       
@@ -1703,7 +1703,7 @@ void adj_tower_radius(int tower)
       //temp = (bed_level_ox - target); // / 2;
       //adj_target = target;// + temp;
       if (((bed_level_ox < adj_target) and (adj_t1_Radius > 0)) or ((bed_level_ox > adj_target) and (adj_t1_Radius < 0))) adj_t1_Radius = -(adj_t1_Radius / 2);
-      if ((bed_level_ox > adj_target - 0.001) and (bed_level_ox < adj_target + 0.001)) t1_done = true;
+      if ((bed_level_ox > adj_target - 0.01) and (bed_level_ox < adj_target + 0.01)) t1_done = true;
       /*
       if ((bed_level_ox + 0.0001 > prev_bed_level) and (bed_level_ox - 0.0001 < prev_bed_level) and (adj_target + 0.0001 > prev_target) and (adj_target - 0.0001 < prev_target)) nochange_count ++;
       if (nochange_count > 1) 
@@ -1736,7 +1736,7 @@ void adj_tower_radius(int tower)
       //temp = (bed_level_oy - target); // / 2;
       //adj_target = target;// + temp;
       if (((bed_level_oy < adj_target) and (adj_t2_Radius > 0)) or ((bed_level_oy > adj_target) and (adj_t2_Radius < 0))) adj_t2_Radius = -(adj_t2_Radius / 2);
-      if ((bed_level_oy > adj_target - 0.001) and (bed_level_oy < adj_target + 0.001)) t1_done = true;
+      if ((bed_level_oy > adj_target - 0.01) and (bed_level_oy < adj_target + 0.01)) t2_done = true;
       /*
       if ((bed_level_oy + 0.0001 > prev_bed_level) and (bed_level_oy - 0.0001 < prev_bed_level) and (adj_target + 0.0001 > prev_target) and (adj_target - 0.0001 < prev_target)) nochange_count ++;
       if (nochange_count > 1) 
@@ -1769,7 +1769,7 @@ void adj_tower_radius(int tower)
       //temp = (bed_level_oz - target); // / 2;
       //adj_target = target;// + temp;
       if (((bed_level_oz < adj_target) and (adj_t3_Radius > 0)) or ((bed_level_oz > adj_target) and (adj_t3_Radius < 0))) adj_t3_Radius = -(adj_t3_Radius / 2);
-      if ((bed_level_oz > adj_target - 0.001) and (bed_level_oz < adj_target + 0.001)) t1_done = true;
+      if ((bed_level_oz > adj_target - 0.01) and (bed_level_oz < adj_target + 0.01)) t3_done = true;
       /*
       if ((bed_level_oz + 0.0001 > prev_bed_level) and (bed_level_oz - 0.0001 < prev_bed_level) and (adj_target + 0.0001 > prev_target) and (adj_target - 0.0001 < prev_target)) nochange_count ++;
       if (nochange_count > 1) 
