@@ -1416,8 +1416,8 @@ int adj_deltaradius()
     {
     SERIAL_ECHOLN("Adjusting Delta Radius");
     //set inital direction and magnitude for delta radius adjustment
-    adj_r = -0.25;
-    if (bed_level_c < bed_level_z) adj_r = 0.25;
+    adj_r = -1;
+    if (bed_level_c < bed_level_z) adj_r = 1;
     //if (bed_level_z > 0) adj_r = -0.1;
     
     bed_safe_z = 20;
@@ -1446,7 +1446,11 @@ int adj_deltaradius()
       //Adjust delta radius
       //if (((adj_r > 0) and (bed_level_c < prev_c)) or ((adj_r < 0) and (bed_level_c > prev_c))) adj_r = -(adj_r / 2);
       if (((bed_level_c > prev_c) and (bed_level_z > prev_z)) or ((bed_level_c < prev_c) and (bed_level_z < prev_z))) adj_r = -(adj_r / 2);
-      //if (abs(adj_r) < 0.0313) adj_r = adj_r * 2; 
+      if (abs(adj_r) < 0.015)
+      	{
+      	c_nochange_count = 10; 
+      	nochange_r = delta_radius;
+      	}
          
       //Count iterations with no change to c probe point
       if (bed_level_c == prev_c) c_nochange_count ++;
