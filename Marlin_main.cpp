@@ -1935,7 +1935,7 @@ void bed_probe_all()
   //Do inital move to safe z level above bed
   feedrate = homing_feedrate[Z_AXIS]; 
   destination[Z_AXIS] = bed_safe_z;
-  prepare_move_raw();
+  //prepare_move_raw();
   st_synchronize();
   
   //Probe all bed positions & store carriage positions
@@ -1944,17 +1944,17 @@ void bed_probe_all()
   //bed_safe_z = bed_level_c + 2;
   //SERIAL_ECHOPAIR("6.bed_safe_z = ",bed_safe_z);
   bed_level_z = probe_bed(0.0, bed_radius);
-  save_carriage_positions(1);
+  //save_carriage_positions(1);
   bed_level_oy = probe_bed(-SIN_60 * bed_radius, COS_60 * bed_radius);
-  save_carriage_positions(2);
+  //save_carriage_positions(2);
   bed_level_x = probe_bed(-SIN_60 * bed_radius, -COS_60 * bed_radius);
-  save_carriage_positions(3);
+  //save_carriage_positions(3);
   bed_level_oz = probe_bed(0.0, -bed_radius);
-  save_carriage_positions(4);
+  //save_carriage_positions(4);
   bed_level_y = probe_bed(SIN_60 * bed_radius, -COS_60 * bed_radius);
-  save_carriage_positions(5);
+  //save_carriage_positions(5);
   bed_level_ox = probe_bed(SIN_60 * bed_radius, COS_60 * bed_radius);
-  save_carriage_positions(6);    
+  //save_carriage_positions(6);    
   }
   
 void calibration_report()
