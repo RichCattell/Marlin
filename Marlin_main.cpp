@@ -1399,153 +1399,80 @@ int fix_tower_errors()
 }
 
 int adj_deltaradius() 
-{
-  float adj_r;
-  float prev_c, prev_z;
-  int c_nochange_count = 0;
-  //int z_nochange_count = 0;
-  float nochange_r;
+{ 
+boolean adj_done; 
+int adj_attempts; 
+float adj_dRadius, bed_level_c, adjdone_vector; 
+
+bed_level_c = probe_bed(0.0, 0.0); 
+
+if (bed_level_c == 0)
+  {
+  SERIAL_ECHOLN("Delta Radius OK");
+  return 0;
+  }
+else
+  {
+  SERIAL_ECHOLN("Adjusting Delta Radius");
+
+  adj_attempts = 0; 
+  adj_dRadius = 0; 
+  adjdone_vector = 0.01; 
+
+  do 
+    { 
+    delta_radius += adj_dRadius; 
+    set_delta_constants(); 
+    adj_done = false; 
   
-  //if ((bed_level_c >= -ac_prec) and (bed_level_c <= ac_prec))
-  if ((bed_level_c >= -ac_prec/2) and (bed_level_c <= ac_prec/2))
-    {
-    SERIAL_ECHOLN("Delta Radius OK");
-    return 0;
-    }
-  else
-    {
-    SERIAL_ECHOLN("Adjusting Delta Radius");
-    //set inital direction and magnitude for delta radius adjustment
-    adj_r = -1;
-    if (bed_level_c < bed_level_z) adj_r = 1;
-    //if (bed_level_z > 0) adj_r = -0.1;
-    
-    bed_safe_z = 20;
-    
-    do
-      {
-      delta_radius += adj_r;
-      set_delta_constants();
-    
-      prev_c = bed_level_c;
-      prev_z = bed_level_z;
-      bed_level_c = probe_bed(0.0, 0.0);
-      bed_level_z = probe_bed(0.0, bed_radius);
-      
-      //Show progress
-      SERIAL_ECHO("r:");
-      SERIAL_PROTOCOL_F(delta_radius, 4);
-      SERIAL_ECHO(" (adj:");
-      SERIAL_PROTOCOL_F(adj_r,4);
-      SERIAL_ECHO(") c:");
-      SERIAL_PROTOCOL_F(bed_level_c, 4);
-      SERIAL_ECHO(" z:");
-      SERIAL_PROTOCOL_F(bed_level_z, 4);
-      SERIAL_ECHOLN("");
-   
-      //Adjust delta radius
-      //if (((adj_r > 0) and (bed_level_c < prev_c)) or ((adj_r < 0) and (bed_level_c > prev_c))) adj_r = -(adj_r / 2);
-      if (((bed_level_c > prev_c) and (bed_level_z > prev_z)) or ((bed_level_c < prev_c) and (bed_level_z < prev_z))) adj_r = -(adj_r / 2);
-      if (abs(adj_r) < 0.015)
-      	{
-      	c_nochange_count = 10; 
-      	nochange_r = delta_radius;
-      	}
-         
-      //Count iterations with no change to c probe point
-      if (bed_level_c == prev_c) c_nochange_count ++;
-      //if (bed_level_z == prev_z) z_nochange_count ++;
-      if (c_nochange_count == 1) nochange_r = delta_radius;
-      //if (z_nochange_count == 1) nochange_r = delta_radius;
+    adj_endstops();  
+    bed_level_c = probe_bed(0, 0); 
 
-      } while(((bed_level_z < bed_level_c - 0.001) or (bed_level_z > bed_level_c + 0.001)) and (c_nochange_count < 3));
-      //} while(((bed_level_z < bed_level_c - ac_prec) or (bed_level_z > bed_level_c + ac_prec)) and (z_nochange_count < 3));
-      
-     
-     if (c_nochange_count > 0) 
-      //if (z_nochange_count > 0) 
-        {
-        delta_radius = nochange_r;
-        set_delta_constants();
-        bed_safe_z = 20;
-        }
-     
-    return 1;
-    }
-}
+    //Set inital adjustment value if it is currently 0 
+    if (adj_dRadius == 0) 
+      { 
+      if (bed_level_c > 0) adj_dRadius = -0.2; 
+      if (bed_level_c < 0) adj_dRadius = 0.2; 
+      } 
 
-/*
-int adj_deltaradius() 
-{
-  float adj_r;
-  //float prev_c;
-  float prev_z;
-  //int c_nochange_count = 0;
-  int z_nochange_count = 0;
-  float nochange_r;
+    //Adjustment complete? 
+    if ((bed_level_c >= -ac_prec) and (bed_level_c <= ac_prec)) 
+      { 
+      //Done to within acprec .. but done within adjdone_vector?   
+      if ((bed_level_c >= -adjdone_vector) and (bed_level_c <= adjdone_vector)) 
+        { 
+        adj_done = true; 
+        } 
+      else 
+        { 
+        adj_attempts ++; 
+        if (adj_attempts > 3) 
+          { 
+          adjdone_vector += 0.01; 
+          adj_attempts = 0; 
+          } 
+        } 
+      } 
+
+    //Show progress 
+    SERIAL_ECHO(" c: "); 
+    SERIAL_PROTOCOL_F(bed_level_c, 4); 
+    SERIAL_ECHO(" delta radius:"); 
+    SERIAL_PROTOCOL_F(delta_radius, 4); 
+    SERIAL_ECHO(" prec:"); 
+    SERIAL_PROTOCOL_F(adjdone_vector, 3); 
+    SERIAL_ECHO(" tries:"); 
+    SERIAL_ECHO(adj_attempts); 
+    SERIAL_ECHOLN(""); 
+    if (adj_done == true) SERIAL_ECHOLN(" done:true"); else SERIAL_ECHOLN(" done:false"); 
+
+    //Overshot target? .. reverse and scale down adjustment 
+    if (((bed_level_c < 0) and (adj_dRadius < 0)) or ((bed_level_c > 0) and (adj_dRadius > 0))) adj_dRadius = -(adj_dRadius / 2); 
   
-  //if ((bed_level_c >= -ac_prec) and (bed_level_c <= ac_prec))
-  if ((bed_level_c >= -ac_prec/2) and (bed_level_c <= ac_prec/2))
-    {
-    SERIAL_ECHOLN("Delta Radius OK");
-    return 0;
-    }
-  else
-    {
-    SERIAL_ECHOLN("Adjusting Delta Radius");
-    //set inital direction and magnitude for delta radius adjustment
-    adj_r = 0.5;
-    //if (bed_level_c > 0) adj_r = -0.1;
-    if (bed_level_z > bed_level_c) adj_r = -0.5;
-    
-    bed_safe_z = 20;
-    
-    do
-      {
-      delta_radius += adj_r;
-      set_delta_constants();
-    
-      //prev_c = bed_level_c;
-      prev_z = bed_level_z;
-      
-      bed_level_c = probe_bed(0.0, 0.0);
-      bed_level_z = probe_bed(0.0, bed_radius);
-      
-      //Show progress
-      SERIAL_ECHO("r:");
-      SERIAL_PROTOCOL_F(delta_radius, 4);
-      SERIAL_ECHO(" (adj:");
-      SERIAL_PROTOCOL_F(adj_r,4);
-      SERIAL_ECHO(") c:");
-      SERIAL_PROTOCOL_F(bed_level_c, 4);
-      SERIAL_ECHO(" z:");
-      SERIAL_PROTOCOL_F(bed_level_z, 4);
-      SERIAL_ECHOLN("");
-   
-      //Adjust delta radius
-      //if (((adj_r > 0) and (bed_level_c < prev_c)) or ((adj_r < 0) and (bed_level_c > prev_c))) adj_r = -(adj_r / 2);
-      if (((adj_r > 0) and (bed_level_z < prev_z)) or ((adj_r < 0) and (bed_level_z > prev_z))) adj_r = -(adj_r / 2);
-
-      //Count iterations with no change to c probe point
-      //if (bed_level_c == prev_c) c_nochange_count ++;
-      if (bed_level_z == prev_z) z_nochange_count ++;
-      //if (c_nochange_count == 1) nochange_r = delta_radius;
-      if (z_nochange_count == 1) nochange_r = delta_radius;
-
-      //} while(((bed_level_c < -ac_prec) or (bed_level_c > ac_prec)) and (c_nochange_count < 3));
-      } while(((bed_level_z < bed_level_c + ac_prec) or (bed_level_z > bed_level_c - ac_prec)) and (z_nochange_count < 10));
-      
-      //if (c_nochange_count > 0) 
-      if (z_nochange_count > 0) 
-        {
-        delta_radius = nochange_r;
-        set_delta_constants();
-        bed_safe_z = 20;
-        }
-    return 1;
-    }
+    } while (adj_done == false); 
+  return 1;
+  }
 }
-*/
 
 void adj_tower_radius(int tower)
 {
