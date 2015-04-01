@@ -1481,9 +1481,12 @@ else
 void adj_tower_radius(int tower)
 {
 boolean adj_done;
-float adj_tRadius, bed_level, bed_level_o;
+int adj_attempts;
+float adj_tRadius, bed_level, bed_level_o, adjdone_vector;
 
+adj_attempts = 0;
 adj_tRadius = 0;
+adjdone_vector = 0.01;
 
 do
   {
@@ -1491,6 +1494,8 @@ do
   set_delta_constants();
   adj_done = false;
   
+  adj_endstops();
+
   if (tower == 1)
     {
     //Bedlevel_x
@@ -1518,13 +1523,26 @@ do
     {
     if (bed_level_o < bed_level) adj_tRadius = -1;
     if (bed_level_o > bed_level) adj_tRadius = 1;
-    }
-        
-  //Overshot target? .. reverse and scale down adjustment
-  if (((bed_level_o < bed_level) and (adj_tRadius > 0)) or ((bed_level_o > bed_level) and (adj_tRadius < 0))) adj_tRadius = -(adj_tRadius / 2);
-
+    }       
+ 
   //Adjustment complete?
-  if ((bed_level_o > bed_level - 0.015) and (bed_level_o < bed_level + 0.015)) adj_done = true;
+  if ((bed_level_c >= -ac_prec) and (bed_level_c <= ac_prec)) 
+    { 
+    //Done to within acprec .. but done within adjdone_vector?   
+    if ((bed_level_o >= bed_level - adjdone_vector) and (bed_level_o <= bed_level + adjdone_vector)) 
+      { 
+      adj_done = true; 
+      } 
+    else 
+      { 
+      adj_attempts ++; 
+      if (adj_attempts > 3) 
+        { 
+        adjdone_vector += 0.01; 
+        adj_attempts = 0; 
+        } 
+      } 
+    } 
 
   //Show progress
   SERIAL_ECHO(" tower: ");
@@ -1533,10 +1551,15 @@ do
   SERIAL_PROTOCOL_F(bed_level_o, 4);
   SERIAL_ECHO(" tower radius adj:");
   SERIAL_PROTOCOL_F(tower_adj[tower + 2], 4);
+  SERIAL_ECHO(" prec:"); 
+  SERIAL_PROTOCOL_F(adjdone_vector, 3); 
+  SERIAL_ECHO(" tries:"); 
+  SERIAL_ECHO(adj_attempts);
   SERIAL_ECHOLN("");
   if (adj_done == true) SERIAL_ECHOLN(" done:true"); else SERIAL_ECHOLN(" done:false");
 
-  if (adj_done == false) adj_endstops();
+  //Overshot target? .. reverse and scale down adjustment
+  if (((bed_level_o < bed_level) and (adj_tRadius > 0)) or ((bed_level_o > bed_level) and (adj_tRadius < 0))) adj_tRadius = -(adj_tRadius / 2);
 
   } while (adj_done == false);
 }
