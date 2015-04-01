@@ -1243,13 +1243,12 @@ for (int i=0; i<6; i++) if (saved_tower_adj[i] != tower_adj[i]) retval++;
 return retval;
 }
 */
-
 int fix_tower_errors()
 {
     boolean t1_err, t2_err, t3_err;
     boolean xy_equal, xz_equal, yz_equal;
     float saved_tower_adj[6];
-    float err_tower;
+    int err_tower;
     float low_diff, high_diff;
     float x_diff, y_diff, z_diff;
     float xy_diff, yz_diff, xz_diff;
@@ -1327,7 +1326,8 @@ int fix_tower_errors()
         if (high_diff == x_diff) err_tower = 1;
         if (high_diff == y_diff) err_tower = 2;      
         if (high_diff == z_diff) err_tower = 3;
-        SERIAL_ECHOPAIR("Tower ", err_tower);
+        SERIAL_ECHO("Tower ");
+        SERIAL_ECHO(err_tower);
         SERIAL_ECHOLN(" has largest error");
         }
       if ((xy_equal == true) and (xz_equal == true) and (yz_equal == true))
@@ -1340,10 +1340,13 @@ int fix_tower_errors()
       }
      
     //Two tower errors
+    
+    /*
     if ((t1_err == true) and (t2_err == true) and (t3_err == false)) err_tower = 3;
     if ((t1_err == true) and (t2_err == false) and (t3_err == true)) err_tower = 2;
     if ((t1_err == false) and (t2_err == true) and (t3_err == true)) err_tower = 1;
-
+    */
+    
     //Single tower error
     if ((t1_err == true) and (t2_err == false) and (t3_err == false)) err_tower = 1;
     if ((t1_err == false) and (t2_err == true) and (t3_err == false)) err_tower = 2;
