@@ -959,7 +959,12 @@ void adj_endstops() {
   boolean x_done = false;
   boolean y_done = false;
   boolean z_done = false; 
+  int adj_attempts;
+  float adjdone_vector;
   float prv_bed_level_x, prv_bed_level_y, prv_bed_level_z;
+
+  adj_attempts = 0; 
+  adjdone_vector = 0.01; 
 
   do 
     {  
@@ -981,39 +986,73 @@ void adj_endstops() {
     SERIAL_PROTOCOL_F(bed_level_z, 4);
     SERIAL_ECHO(" (adj:");
     SERIAL_PROTOCOL_F(endstop_adj[2], 4);
-    SERIAL_ECHOLN(")");
-  
+    SERIAL_ECHO(") Prec:");
+    SERIAL_PROTOCOL_F(adjdone_vector,3);
+    SERIAL_ECHO(" Tries:");
+    SERIAL_ECHO(adj_attempts);
+    SERIAL_ECHOLN("");
+    
     if ((bed_level_x >= -ac_prec) and (bed_level_x <= ac_prec)) 
       {
-      x_done = true;
-      SERIAL_ECHO("X=OK");
-      }
-    else
-      {
-      x_done = false;
-      SERIAL_ECHO("X=ERROR");
+      //Done to within acprec .. but done within adjdone_vector?   
+      if ((bed_level_x >= -adjdone_vector) and (bed_level_x <= adjdone_vector)) 
+        { 
+        x_done = true; 
+        SERIAL_ECHO("X=OK");
+        } 
+      else 
+        { 
+        adj_attempts ++; 
+        if (adj_attempts > 3) 
+          { 
+          adjdone_vector += 0.01; 
+          adj_attempts = 0; 
+          } 
+	x_done = false;
+        SERIAL_ECHO("X=ERROR");
+        } 
       }
 
-    if ((bed_level_y >= -ac_prec) and (bed_level_y <= ac_prec))
+    if ((bed_level_y >= -ac_prec) and (bed_level_y <= ac_prec)) 
       {
-      y_done = true;
-      SERIAL_ECHO(" Y=OK");
-      }
-    else
-      {
-      y_done = false;
-      SERIAL_ECHO(" Y=ERROR");
+      //Done to within acprec .. but done within adjdone_vector?   
+      if ((bed_level_y >= -adjdone_vector) and (bed_level_y <= adjdone_vector)) 
+        { 
+        y_done = true; 
+        SERIAL_ECHO("Y=OK");
+        } 
+      else 
+        { 
+        adj_attempts ++; 
+        if (adj_attempts > 3) 
+          { 
+          adjdone_vector += 0.01; 
+          adj_attempts = 0; 
+          } 
+	y_done = false;
+        SERIAL_ECHO("Y=ERROR");
+        } 
       }
 
-    if ((bed_level_z >= -ac_prec) and (bed_level_z <= ac_prec))
+    if ((bed_level_z >= -ac_prec) and (bed_level_z <= ac_prec)) 
       {
-      z_done = true;
-      SERIAL_ECHO(" Z=OK");
-      }
-    else
-      {
-      z_done = false;
-      SERIAL_ECHO(" Z=ERROR");
+      //Done to within acprec .. but done within adjdone_vector?   
+      if ((bed_level_z >= -adjdone_vector) and (bed_level_z <= adjdone_vector)) 
+        { 
+        z_done = true; 
+        SERIAL_ECHO("Z=OK");
+        } 
+      else 
+        { 
+        adj_attempts ++; 
+        if (adj_attempts > 3) 
+          { 
+          adjdone_vector += 0.01; 
+          adj_attempts = 0; 
+          } 
+	z_done = false;
+        SERIAL_ECHO("Z=ERROR");
+        } 
       }
     } while (((x_done == false) or (y_done == false) or (z_done == false))); // and (endstop_adj_err == false));
       
@@ -1038,6 +1077,7 @@ void adj_endstops() {
       }
     bed_safe_z = 20;
 }
+
 void adj_endstops_alt1(){
   float adj_x_prv, adj_y_prv, adj_z_prv;
   float diff_x_prv, diff_y_prv, diff_z_prv;
