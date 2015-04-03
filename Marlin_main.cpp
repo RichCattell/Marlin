@@ -947,9 +947,10 @@ void apply_endstop_adjustment(float x_endstop, float y_endstop, float z_endstop)
 }
 
 void adj_endstops() {
-  boolean x_done = false;
-  boolean y_done = false;
-  boolean z_done = false; 
+  boolean x_done;
+  boolean y_done;
+  boolean z_done; 
+  boolean accuracy_fail;
   int adj_attempts;
   float adjdone_vector;
   float prv_bed_level_x, prv_bed_level_y, prv_bed_level_z;
@@ -983,68 +984,43 @@ void adj_endstops() {
     SERIAL_ECHO(adj_attempts);
     SERIAL_ECHOLN("");
     
+    x_done = false;
+    y_done = false;
+    z_done = false;
+    accuracy_fail = false;
+    
     if ((bed_level_x >= -ac_prec) and (bed_level_x <= ac_prec)) 
       {
       //Done to within acprec .. but done within adjdone_vector?   
-      if ((bed_level_x >= -adjdone_vector) and (bed_level_x <= adjdone_vector)) 
-        { 
-        x_done = true; 
-        SERIAL_ECHO("X=OK");
-        } 
-      else 
-        { 
-        adj_attempts ++; 
-        if (adj_attempts > 3) 
-          { 
-          adjdone_vector += 0.01; 
-          adj_attempts = 0; 
-          } 
-	x_done = false;
-        SERIAL_ECHO("X=ERROR");
-        } 
+      if ((bed_level_x >= -adjdone_vector) and (bed_level_x <= adjdone_vector)) x_done = true; else accuracy_fail = true;
       }
-
+      
     if ((bed_level_y >= -ac_prec) and (bed_level_y <= ac_prec)) 
       {
       //Done to within acprec .. but done within adjdone_vector?   
-      if ((bed_level_y >= -adjdone_vector) and (bed_level_y <= adjdone_vector)) 
-        { 
-        y_done = true; 
-        SERIAL_ECHO("Y=OK");
-        } 
-      else 
-        { 
-        adj_attempts ++; 
-        if (adj_attempts > 3) 
-          { 
-          adjdone_vector += 0.01; 
-          adj_attempts = 0; 
-          } 
-	y_done = false;
-        SERIAL_ECHO("Y=ERROR");
-        } 
+      if ((bed_level_y >= -adjdone_vector) and (bed_level_y <= adjdone_vector)) y_done = true; else accuracy_fail = true;
       }
 
     if ((bed_level_z >= -ac_prec) and (bed_level_z <= ac_prec)) 
       {
       //Done to within acprec .. but done within adjdone_vector?   
-      if ((bed_level_z >= -adjdone_vector) and (bed_level_z <= adjdone_vector)) 
-        { 
-        z_done = true; 
-        SERIAL_ECHO("Z=OK");
-        } 
-      else 
-        { 
+      if ((bed_level_z >= -adjdone_vector) and (bed_level_z <= adjdone_vector)) z_done = true; else accuracy_fail = true;
+      }
+
+      if (x_done == true) SERIAL_ECHO("X=OK "); else SERIAL_ECHO("X=ERROR ");
+      if (y_done == true) SERIAL_ECHO("Y=OK "); else SERIAL_ECHO("Y=ERROR ");
+      if (z_done == true) SERIAL_ECHO("Z=OK "); else SERIAL_ECHO("Z=ERROR ");
+      
+      if (accuracy_fail == true)
+        {
         adj_attempts ++; 
         if (adj_attempts > 3) 
           { 
           adjdone_vector += 0.01; 
           adj_attempts = 0; 
-          } 
-	z_done = false;
-        SERIAL_ECHO("Z=ERROR");
-        } 
-      }
+          }
+        }
+          
     } while (((x_done == false) or (y_done == false) or (z_done == false))); // and (endstop_adj_err == false));
       
     float high_endstop = 0;
