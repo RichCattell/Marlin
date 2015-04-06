@@ -187,6 +187,7 @@ float add_homeing[3]={0,0,0};
   float DELTA_DIAGONAL_ROD2_2;
   float DELTA_DIAGONAL_ROD3_2;
   float ac_prec = AUTOCALIBRATION_PRECISION;
+  float start_prec = 0.01;
   float bed_radius = BED_DIAMETER / 2;
   float delta_tower1_x, delta_tower1_y;
   float delta_tower2_x, delta_tower2_y;
@@ -956,7 +957,7 @@ void adj_endstops() {
   float prv_bed_level_x, prv_bed_level_y, prv_bed_level_z;
 
   adj_attempts = 0; 
-  adjdone_vector = 0.01; 
+  adjdone_vector = start_prec; 
 
   do 
     {  
@@ -1010,12 +1011,13 @@ void adj_endstops() {
       if (x_done == true) SERIAL_ECHO("X=OK "); else SERIAL_ECHO("X=ERROR ");
       if (y_done == true) SERIAL_ECHO("Y=OK "); else SERIAL_ECHO("Y=ERROR ");
       if (z_done == true) SERIAL_ECHO("Z=OK "); else SERIAL_ECHO("Z=ERROR ");
-      
+     
       if (accuracy_fail == true)
         {
         adj_attempts ++; 
         if (adj_attempts > 3) 
           { 
+          start_prec = adjdone_vector; // set start precion for next adjustment run
           adjdone_vector += 0.01; 
           adj_attempts = 0; 
           }
@@ -1067,9 +1069,9 @@ int fix_tower_errors()
     z_diff = abs(bed_level_z - bed_level_oz);
     if (z_diff > high_diff) high_diff = z_diff;
     
-    if (x_diff <= ac_prec) t1_err = false; else t1_err = true;
-    if (y_diff <= ac_prec) t2_err = false; else t2_err = true;
-    if (z_diff <= ac_prec) t3_err = false; else t3_err = true;    
+    if (x_diff <= start_prec) t1_err = false; else t1_err = true;
+    if (y_diff <= start_prec) t2_err = false; else t2_err = true;
+    if (z_diff <= start_prec) t3_err = false; else t3_err = true;    
     
     SERIAL_ECHO("x_diff = ");
     SERIAL_PROTOCOL_F(x_diff,5);
@@ -1088,9 +1090,9 @@ int fix_tower_errors()
     xy_equal = false;
     xz_equal = false;
     yz_equal = false;
-    if (abs(x_diff - y_diff) <= ac_prec) xy_equal = true;
-    if (abs(x_diff - z_diff) <= ac_prec) xz_equal = true;
-    if (abs(y_diff - z_diff) <= ac_prec) yz_equal = true; 
+    if (abs(x_diff - y_diff) <= start_prec) xy_equal = true;
+    if (abs(x_diff - z_diff) <= start_prec) xz_equal = true;
+    if (abs(y_diff - z_diff) <= start_prec) yz_equal = true; 
     SERIAL_ECHO("xy_equal = ");
     if (xy_equal == true) SERIAL_ECHOLN("true"); else SERIAL_ECHOLN("false");
     SERIAL_ECHO("xz_equal = ");
@@ -1108,7 +1110,7 @@ int fix_tower_errors()
     SERIAL_ECHO("Opp Range = ");
     SERIAL_PROTOCOL_F(high_opp - low_opp,5);
     SERIAL_ECHOLN("");
-    if (high_opp - low_opp  < ac_prec) 
+    if (high_opp - low_opp  < start_prec) 
       {
       SERIAL_ECHOLN("Opposite Points within Limits - Adjustment not required");
       t1_err = false;
@@ -1119,9 +1121,6 @@ int fix_tower_errors()
     //All Towers have errors 
     if ((t1_err == true) and (t2_err == true) and (t3_err == true))
       { 
-      //if ((x_diff <= y_diff + ac_prec) and (x_diff > y_diff - ac_prec)) xy_equal = true;
-      //if ((x_diff <= z_diff + ac_prec) and (x_diff > z_diff - ac_prec)) xz_equal = true;
-      //if ((y_diff <= z_diff + ac_prec) and (y_diff > z_diff - ac_prec)) yz_equal = true;
       if ((xy_equal == false) or (xz_equal == false) or (yz_equal == false))
         {
         //Errors not equal .. select the tower that needs to be adjusted   
@@ -1222,7 +1221,7 @@ else
 
   adj_attempts = 0; 
   adj_dRadius = 0; 
-  adjdone_vector = 0.01; 
+  adjdone_vector = start_prec; 
 
   do 
     { 
@@ -1230,7 +1229,7 @@ else
     set_delta_constants(); 
     adj_done = false; 
   
-    adj_endstops();  
+    if (adj_dRadius != 0) adj_endstops();  
     bed_level_c = probe_bed(0, 0); 
 
     //Set inital adjustment value if it is currently 0 
@@ -1253,6 +1252,7 @@ else
         adj_attempts ++; 
         if (adj_attempts > 3) 
           { 
+          start_prec = adjdone_vector;
           adjdone_vector += 0.01; 
           adj_attempts = 0; 
           } 
@@ -1287,7 +1287,7 @@ float adj_tRadius, bed_level, bed_level_o, adjdone_vector;
 
 adj_attempts = 0;
 adj_tRadius = 0;
-adjdone_vector = 0.01;
+adjdone_vector = start_prec;
 
 do
   {
@@ -1295,7 +1295,7 @@ do
   set_delta_constants();
   adj_done = false;
   
-  adj_endstops();
+  if (adj_tRadius != 0) adj_endstops();
 
   if (tower == 1)
     {
@@ -1763,27 +1763,29 @@ void bed_probe_all()
   //Do inital move to safe z level above bed
   feedrate = homing_feedrate[Z_AXIS]; 
   destination[Z_AXIS] = bed_safe_z;
-  //prepare_move_raw();
+  prepare_move_raw();
   st_synchronize();
-  
+  //Inital throwaway probe.. used to stabilize probe
+  bed_level_c = probe_bed(0.0, 0.0); 
+    
   //Probe all bed positions & store carriage positions
-  bed_level_c = probe_bed(0.0, 0.0);      
-  //save_carriage_positions(0);
-  //bed_safe_z = bed_level_c + 2;
-  //SERIAL_ECHOPAIR("6.bed_safe_z = ",bed_safe_z);
   bed_level_z = probe_bed(0.0, bed_radius);
-  //save_carriage_positions(1);
+  save_carriage_positions(1);
   bed_level_oy = probe_bed(-SIN_60 * bed_radius, COS_60 * bed_radius);
-  //save_carriage_positions(2);
+  save_carriage_positions(2);
   bed_level_x = probe_bed(-SIN_60 * bed_radius, -COS_60 * bed_radius);
-  //save_carriage_positions(3);
+  save_carriage_positions(3);
   bed_level_oz = probe_bed(0.0, -bed_radius);
-  //save_carriage_positions(4);
+  save_carriage_positions(4);
   bed_level_y = probe_bed(SIN_60 * bed_radius, -COS_60 * bed_radius);
-  //save_carriage_positions(5);
+  save_carriage_positions(5);
   bed_level_ox = probe_bed(SIN_60 * bed_radius, COS_60 * bed_radius);
-  //save_carriage_positions(6);    
-  }
+  save_carriage_positions(6);    
+  bed_level_c = probe_bed(0.0, 0.0);      
+  save_carriage_positions(0);  
+  bed_safe_z = bed_level_c + 2;
+  //SERIAL_ECHOPAIR("6.bed_safe_z = ",bed_safe_z);
+}
   
 void calibration_report()
   {
@@ -2251,7 +2253,7 @@ void process_commands()
          {  
          int err_tower;
          int iteration = 0;
-               
+                       
          do {
             iteration ++;
             SERIAL_ECHO("Iteration: ");
@@ -2300,16 +2302,23 @@ void process_commands()
          int err_tower;
          int iteration = 0;
          int dr_adjusted;
-       //do {
+         boolean all_done;
+         int all_done_count=0;
+   
          do {       
             do {
                iteration ++;
                SERIAL_ECHO("Iteration: ");
                SERIAL_ECHOLN(iteration);              
 
-               SERIAL_ECHOLN("Checking/Adjusting endstop offsets");
-               adj_endstops();             
-                               
+               if ((bed_level_x < -start_prec) or (bed_level_x > start_prec)
+                 or (bed_level_y < -start_prec) or (bed_level_y > start_prec)
+                 or (bed_level_z < -start_prec) or (bed_level_z > start_prec))
+                 {
+                 SERIAL_ECHOLN("Adjusting endstop offsets");
+                 adj_endstops();             
+                 }
+                             
                bed_probe_all();
                calibration_report();
 
@@ -2352,16 +2361,35 @@ void process_commands()
                bed_probe_all();
                calibration_report();
                }
-              
-             } while((bed_level_c < -ac_prec) or (bed_level_c > ac_prec)
-                  or (bed_level_x < -ac_prec) or (bed_level_x > ac_prec)
-                  or (bed_level_y < -ac_prec) or (bed_level_y > ac_prec)
-                  or (bed_level_z < -ac_prec) or (bed_level_z > ac_prec)
-                  or (bed_level_ox < -ac_prec) or (bed_level_ox > ac_prec)
-                  or (bed_level_oy < -ac_prec) or (bed_level_oy > ac_prec)
-                  or (bed_level_oz < -ac_prec) or (bed_level_oz > ac_prec));
-         
-         SERIAL_ECHOLN("Autocalibration Complete");
+             all_done = true;
+             if ((bed_level_c < -start_prec) or (bed_level_c > start_prec)
+                  or (bed_level_x < -start_prec) or (bed_level_x > start_prec)
+                  or (bed_level_y < -start_prec) or (bed_level_y > start_prec)
+                  or (bed_level_z < -start_prec) or (bed_level_z > start_prec)
+                  or (bed_level_ox < -start_prec) or (bed_level_ox > start_prec)
+                  or (bed_level_oy < -start_prec) or (bed_level_oy > start_prec)
+                  or (bed_level_oz < -start_prec) or (bed_level_oz > start_prec)) all_done = false;
+             
+             if (all_done == false)
+                {
+                all_done_count ++; 
+                if (all_done_count > 3) 
+                  { 
+                  SERIAL_ECHO("Unable to achive precision +/- ");
+                  SERIAL_PROTOCOL_F(start_prec,3);
+                  SERIAL_ECHOLN("mm");
+                  start_prec += 0.01; 
+                  all_done_count = 0;
+                  SERIAL_ECHO("Reducing Precision to +/- ");
+                  SERIAL_PROTOCOL_F(start_prec,3);
+                  SERIAL_ECHOLN("mm");
+                  } 
+                }  
+             } while(all_done == false);
+             
+         SERIAL_ECHO("Autocalibration Complete (Precision achived +/- ");
+         SERIAL_PROTOCOL_F(start_prec,3);
+         SERIAL_ECHOLN("mm)"); 
          }
          
   	retract_z_probe();
