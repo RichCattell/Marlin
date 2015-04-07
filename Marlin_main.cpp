@@ -2303,7 +2303,7 @@ void process_commands()
          int iteration = 0;
          int dr_adjusted;
          boolean all_done;
-         int all_done_count=0;
+         //int all_done_count=0;
    
          do {       
             do {
@@ -2322,22 +2322,22 @@ void process_commands()
                bed_probe_all();
                calibration_report();
 
-               if ((bed_level_c < -ac_prec) or (bed_level_c > ac_prec))
+               if ((bed_level_c < -start_prec) or (bed_level_c > start_prec))
                  {
                  SERIAL_ECHOLN("Checking delta radius");
                  dr_adjusted = adj_deltaradius();
                  }
                else dr_adjusted = 0;
                
-               } while ((bed_level_c < -ac_prec) or (bed_level_c > ac_prec)
-                         or (bed_level_x < -ac_prec) or (bed_level_x > ac_prec)
-                         or (bed_level_y < -ac_prec) or (bed_level_y > ac_prec)
-                         or (bed_level_z < -ac_prec) or (bed_level_z > ac_prec)
+               } while ((bed_level_c < -start_prec) or (bed_level_c > start_prec)
+                         or (bed_level_x < -start_prec) or (bed_level_x > start_prec)
+                         or (bed_level_y < -start_prec) or (bed_level_y > start_prec)
+                         or (bed_level_z < -start_prec) or (bed_level_z > start_prec)
                          or (dr_adjusted != 0));
              
-             if ((bed_level_ox < -ac_prec) or (bed_level_ox > ac_prec) or
-                 (bed_level_oy < -ac_prec) or (bed_level_oy > ac_prec) or
-                 (bed_level_oz < -ac_prec) or (bed_level_oz > ac_prec))
+             if ((bed_level_ox < -start_prec) or (bed_level_ox > start_prec) or
+                 (bed_level_oy < -start_prec) or (bed_level_oy > start_prec) or
+                 (bed_level_oz < -start_prec) or (bed_level_oz > start_prec))
                {
                SERIAL_ECHOLN("Checking for tower geometry errors.."); 
                if (fix_tower_errors() != 0 )
@@ -2370,6 +2370,7 @@ void process_commands()
                   or (bed_level_oy < -start_prec) or (bed_level_oy > start_prec)
                   or (bed_level_oz < -start_prec) or (bed_level_oz > start_prec)) all_done = false;
              
+             /*
              if (all_done == false)
                 {
                 all_done_count ++; 
@@ -2384,7 +2385,8 @@ void process_commands()
                   SERIAL_PROTOCOL_F(start_prec,3);
                   SERIAL_ECHOLN("mm");
                   } 
-                }  
+                }
+             */
              } while(all_done == false);
              
          SERIAL_ECHO("Autocalibration Complete (Precision achived +/- ");
