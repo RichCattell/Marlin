@@ -237,10 +237,13 @@ int EtoPPressure=0;
 #endif
 
 #ifdef FWRETRACT
-  bool autoretract_enabled=true;
+  bool autoretract_enabled=false;
   bool retracted=false;
-  float retract_length=3, retract_feedrate=17*60, retract_zlift=0.8;
-  float retract_recover_length=0, retract_recover_feedrate=8*60;
+  float retract_length = RETRACT_LENGTH;
+  float retract_feedrate = RETRACT_FEEDRATE;
+  float retract_zlift = RETRACT_ZLIFT;
+  float retract_recover_length = RETRACT_RECOVER_LENGTH;
+  float retract_recover_feedrate = RETRACT_RECOVER_FEEDRATE;
 #endif
 
 #ifdef ULTIPANEL
@@ -1895,6 +1898,42 @@ void home_delta_axis() {
     endstops_hit_on_purpose(); 
 }
 
+#ifdef FWRETRACT
+  void retract(bool retracting) {
+    if(retracting && !retracted) {
+      destination[X_AXIS]=current_position[X_AXIS];
+      destination[Y_AXIS]=current_position[Y_AXIS];
+      destination[Z_AXIS]=current_position[Z_AXIS];
+      destination[E_AXIS]=current_position[E_AXIS];
+      current_position[E_AXIS]+=retract_length/volumetric_multiplier[active_extruder];
+      plan_set_e_position(current_position[E_AXIS]);
+      float oldFeedrate = feedrate;
+      feedrate=retract_feedrate*60;
+      retracted=true;
+      prepare_move();
+      current_position[Z_AXIS]-=retract_zlift;
+      plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+      prepare_move();
+      feedrate = oldFeedrate;
+    } else if(!retracting && retracted) {
+      destination[X_AXIS]=current_position[X_AXIS];
+      destination[Y_AXIS]=current_position[Y_AXIS];
+      destination[Z_AXIS]=current_position[Z_AXIS];
+      destination[E_AXIS]=current_position[E_AXIS];
+      current_position[Z_AXIS]+=retract_zlift;
+      plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+      //prepare_move();
+      current_position[E_AXIS]-=(retract_length+retract_recover_length)/volumetric_multiplier[active_extruder]; 
+      plan_set_e_position(current_position[E_AXIS]);
+      float oldFeedrate = feedrate;
+      feedrate=retract_recover_feedrate*60;
+      retracted=false;
+      prepare_move();
+      feedrate = oldFeedrate;
+    }
+  } //retract
+#endif //FWRETRACT
+
 void process_commands()
 {
   unsigned long codenum; //throw away variable
@@ -1908,6 +1947,18 @@ void process_commands()
     case 1: // G1
       if(Stopped == false) {
         get_coordinates(); // For X Y Z E F
+		#ifdef FWRETRACT
+            if(autoretract_enabled)
+            if( !(code_seen('X') || code_seen('Y') || code_seen('Z')) && code_seen('E')) {
+              float echange=destination[E_AXIS]-current_position[E_AXIS];
+              if((echange<-MIN_RETRACT && !retracted) || (echange>MIN_RETRACT && retracted)) { //move appears to be an attempt to retract or recover
+                  current_position[E_AXIS] = destination[E_AXIS]; //hide the slicer-generated retract/recover from calculations
+                  plan_set_e_position(current_position[E_AXIS]); //AND from the planner
+                  retract(!retracted);
+                  return;
+              }
+            }
+          #endif //FWRETRACT
         prepare_move();
         //ClearToSend();
         return;
@@ -1940,34 +1991,12 @@ void process_commands()
         lcd_update();
       }
       break;
-      #ifdef FWRETRACT
+	  #ifdef FWRETRACT
       case 10: // G10 retract
-      if(!retracted)
-      {
-        destination[X_AXIS]=current_position[X_AXIS];
-        destination[Y_AXIS]=current_position[Y_AXIS];
-        destination[Z_AXIS]=current_position[Z_AXIS];
-        current_position[Z_AXIS]+=-retract_zlift;
-        destination[E_AXIS]=current_position[E_AXIS]-retract_length;
-        feedrate=retract_feedrate;
-        retracted=true;
-        prepare_move();
-      }
-
+        retract(true);
       break;
-      case 11: // G10 retract_recover
-      if(!retracted)
-      {
-        destination[X_AXIS]=current_position[X_AXIS];
-        destination[Y_AXIS]=current_position[Y_AXIS];
-        destination[Z_AXIS]=current_position[Z_AXIS];
-
-        current_position[Z_AXIS]+=retract_zlift;
-        current_position[E_AXIS]+=-retract_recover_length;
-        feedrate=retract_recover_feedrate;
-        retracted=false;
-        prepare_move();
-      }
+      case 11: // G11 retract_recover
+        retract(false);
       break;
       #endif //FWRETRACT
     case 28: //G28 Home all Axis one at a time
@@ -3157,8 +3186,7 @@ void process_commands()
         break;
     #endif
     #ifdef FWRETRACT
-    
-    case 207: //M207 - set retract length S[positive mm] F[feedrate mm/sec] Z[additional zlift/hop]
+    case 207: //M207 - set retract length S[positive mm] F[feedrate mm/min] Z[additional zlift/hop]
     {
       if(code_seen('S'))
       {
@@ -3166,14 +3194,14 @@ void process_commands()
       }
       if(code_seen('F'))
       {
-        retract_feedrate = code_value() ;
+        retract_feedrate = code_value()/60 ;
       }
       if(code_seen('Z'))
       {
         retract_zlift = code_value() ;
       }
     }break;
-    case 208: // M208 - set retract recover length S[positive mm surplus to the M207 S*] F[feedrate mm/sec]
+    case 208: // M208 - set retract recover length S[positive mm surplus to the M207 S*] F[feedrate mm/min]
     {
       if(code_seen('S'))
       {
@@ -3181,7 +3209,7 @@ void process_commands()
       }
       if(code_seen('F'))
       {
-        retract_recover_feedrate = code_value() ;
+        retract_recover_feedrate = code_value()/60 ;
       }
     }break;
     case 209: // M209 - S<1=true/0=false> enable automatic retract detect if the slicer did not support G10/11: every normal extrude-only move will be classified as retract depending on the direction.
