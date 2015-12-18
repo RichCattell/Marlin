@@ -384,7 +384,15 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 
 // default settings
 
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {80, 80, 80, 439.5}
+#define XYZ_FULL_STEPS_PER_ROTATION 200 //Stepper motor weekly number of steps, namely 360 / stepper motor angle
+//For example, 1.8 degrees, the number of steps should be 360 / 1.8 = 200; if it is 0.9 degree motor 360 / 0.9 = 400.
+#define XYZ_MICROSTEPS 16 //Breakdown of the number of stepper drive
+#define XYZ_BELT_PITCH 2 //Belt tooth pitch
+#define XYZ_PULLEY_TEETH 16 //Synchronization number of teeth
+#define XYZ_STEPS (XYZ_FULL_STEPS_PER_ROTATION * XYZ_MICROSTEPS / double(XYZ_BELT_PITCH) / double(XYZ_PULLEY_TEETH))
+//This is the formula: number of subdivisions number * stepping stepper motor driver / belt tooth spacing / synchronous tooth number
+
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {XYZ_STEPS, XYZ_STEPS, XYZ_STEPS, 150}
 #define DEFAULT_MAX_FEEDRATE          {200, 200, 200, 200}    // (mm/sec)
 #define DEFAULT_MAX_ACCELERATION      {9000,9000,9000,9000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
 
